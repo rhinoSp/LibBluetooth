@@ -1,5 +1,6 @@
 package com.rhino.bluetoothdemo.utils.ble;
 
+import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 
@@ -15,93 +16,41 @@ import java.io.OutputStream;
  **/
 public class BLEClient {
 
+    /**
+     * 蓝牙适配器
+     */
+    private BluetoothAdapter bluetoothAdapter;
+    /**
+     * 回调事件
+     */
     private BLECallback callback;
 
+    /**
+     * 连接成功的蓝牙设备
+     */
     private BluetoothDevice bluetoothDeviceConnected;
+    /**
+     * Socket用于消息收发
+     */
     private BluetoothSocket bluetoothSocket;
 
-    private ConnectThread connectThread;
-    private ReadThread readThread;
-
-    private boolean onDestroy = false;
-    private int bleStatus = BLEStatus.CONNECTING;
-
     /**
-     * 客户端连接线程
+     * 连接线程
      */
-    private class ConnectThread extends Thread {
-
-        private BluetoothDevice bluetoothDevice;
-        private String msg;
-
-        public ConnectThread(BluetoothDevice bluetoothDevice, String msg) {
-            this.bluetoothDevice = bluetoothDevice;
-            this.msg = msg;
-        }
-
-        @Override
-        public void run() {
-            try {
-                bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(BLEUtils.BLE_UUID);
-                notifyStatusChanged(BLEStatus.CONNECTING, "连接服务器中！");
-                bluetoothSocket.connect();
-                notifyStatusChanged(BLEStatus.CONNECT_SUCCESS, "连接服务器成功！");
-
-                // 保存连接成功的设备
-                bluetoothDeviceConnected = bluetoothDevice;
-                // 开启读线程
-                startReadThread();
-                // 发送数据
-                doWrite(msg);
-            } catch (Exception e) {
-                notifyStatusChanged(BLEStatus.READ_FAILED, "连接服务器失败！" + e.toString());
-                LogUtils.e("连接服务器失败！", e);
-            }
-        }
-    }
-
+    private ConnectThread connectThread;
     /**
      * 读取数据线程
      */
-    private class ReadThread extends Thread {
-        @Override
-        public void run() {
-            byte[] buffer = new byte[1024];
-            int bytes;
-            InputStream inputStream = null;
-            try {
-                inputStream = bluetoothSocket.getInputStream();
-                while (!isInterrupted() && (bytes = inputStream.read(buffer)) > 0) {
-                    // 循环读取
-                    byte[] buf_data = new byte[bytes];
-                    for (int i = 0; i < bytes; i++) {
-                        buf_data[i] = buffer[i];
-                    }
-                    String msg = new String(buf_data);
-                    notifyStatusChanged(BLEStatus.READ_SUCCESS, msg);
-                    LogUtils.i("已经接收到数据：" + msg);
-                }
-            } catch (Exception e) {
-//                if (!onDestroy && bluetoothDeviceConnected != null) {
-//                    BluetoothDevice bluetoothDevice = bluetoothDeviceConnected;
-//                    disconnect();
-//                    write(bluetoothDevice, "1");
-//                }
-                notifyStatusChanged(BLEStatus.READ_FAILED, "读取数据失败！" + e.toString());
-                LogUtils.e("读取数据失败！", e);
-                try {
-                    if (inputStream != null) {
-                        inputStream.close();
-                    }
-                } catch (Exception e1) {
-                    LogUtils.e("关闭读取数据流失败！", e);
-                }
-            }
-        }
-    }
+    private ReadThread readThread;
+
+    /**
+     * 是否销毁
+     */
+    private boolean onDestroy = false;
 
 
-    public BLEClient(BLECallback callback) {
+    public BLEClient(BluetoothAdapter bluetoothAdapter, BLECallback callback) {
+        this.bluetoothAdapter = bluetoothAdapter;
         this.callback = callback;
     }
 
@@ -111,7 +60,7 @@ public class BLEClient {
     public void write(BluetoothDevice bluetoothDevice, String msg) {
         if (bluetoothSocket != null && bluetoothSocket.isConnected() && bluetoothDevice.equals(bluetoothDeviceConnected)) {
             // 已连接该设备服务器,直接发送
-            notifyStatusChanged(BLEStatus.CONNECTED, "已连接服务器！");
+            notifyEvent(BLEEvent.CONNECTED, "已连接服务器！");
             doWrite(msg);
         } else {
             // 未连接该设备
@@ -123,12 +72,12 @@ public class BLEClient {
     /**
      * 发送数据
      */
-    private void doWrite(String msg) {
+    private void  doWrite(String msg) {
         OutputStream outputStream = null;
         try {
             outputStream = bluetoothSocket.getOutputStream();
             outputStream.write(msg.getBytes());
-            notifyStatusChanged(BLEStatus.WRITE_SUCCESS, "发送数据成功！");
+            notifyEvent(BLEEvent.WRITE_SUCCESS, "发送数据成功！");
             LogUtils.i("发送成功：" + msg);
         } catch (Exception e) {
             if (!onDestroy && bluetoothDeviceConnected != null) {
@@ -137,7 +86,7 @@ public class BLEClient {
                 disconnect();
                 write(bluetoothDevice, msg);
             }
-            notifyStatusChanged(BLEStatus.WRITE_FAILED, "发送数据失败！" + e.toString());
+            notifyEvent(BLEEvent.WRITE_FAILED, "发送数据失败！" + e.toString());
             LogUtils.e("发送数据失败！" + e.toString());
             try {
                 if (outputStream != null) {
@@ -221,9 +170,81 @@ public class BLEClient {
     /**
      * 通知
      */
-    private void notifyStatusChanged(int bleStatus, Object obj) {
-        this.bleStatus = bleStatus;
-        this.callback.onBLEStatusChanged(bleStatus, obj);
+    private void notifyEvent(BLEEvent event, Object obj) {
+        this.callback.onBLEEvent(event, obj);
     }
 
+    /**
+     * 客户端连接线程
+     */
+    private class ConnectThread extends Thread {
+
+        private BluetoothDevice bluetoothDevice;
+        private String msg;
+
+        public ConnectThread(BluetoothDevice bluetoothDevice, String msg) {
+            this.bluetoothDevice = bluetoothDevice;
+            this.msg = msg;
+        }
+
+        @Override
+        public void run() {
+            try {
+                bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(BLEUtils.BLE_UUID);
+                notifyEvent(BLEEvent.CONNECTING, "连接服务器中！");
+                bluetoothSocket.connect();
+                notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务器成功！");
+
+                // 保存连接成功的设备
+                bluetoothDeviceConnected = bluetoothDevice;
+                // 开启读线程
+                startReadThread();
+                // 发送数据
+                doWrite(msg);
+            } catch (Exception e) {
+                notifyEvent(BLEEvent.READ_FAILED, "连接服务器失败！" + e.toString());
+                LogUtils.e("连接服务器失败！", e);
+            }
+        }
+    }
+
+    /**
+     * 读取数据线程
+     */
+    private class ReadThread extends Thread {
+        @Override
+        public void run() {
+            byte[] buffer = new byte[1024];
+            int bytes;
+            InputStream inputStream = null;
+            try {
+                inputStream = bluetoothSocket.getInputStream();
+                while (!isInterrupted() && (bytes = inputStream.read(buffer)) > 0) {
+                    // 循环读取
+                    byte[] buf_data = new byte[bytes];
+                    for (int i = 0; i < bytes; i++) {
+                        buf_data[i] = buffer[i];
+                    }
+                    String msg = new String(buf_data);
+                    notifyEvent(BLEEvent.READ_SUCCESS, msg);
+                    LogUtils.i("已经接收到数据：" + msg);
+                }
+            } catch (Exception e) {
+//                if (!onDestroy && bluetoothDeviceConnected != null) {
+//                    BluetoothDevice bluetoothDevice = bluetoothDeviceConnected;
+//                    disconnect();
+//                    write(bluetoothDevice, "1");
+//                }
+                notifyEvent(BLEEvent.READ_FAILED, "读取数据失败！" + e.toString());
+                LogUtils.e("读取数据失败！", e);
+                try {
+                    if (inputStream != null) {
+                        inputStream.close();
+                    }
+                } catch (Exception e1) {
+                    LogUtils.e("关闭读取数据流失败！", e);
+                }
+            }
+        }
+    }
 }

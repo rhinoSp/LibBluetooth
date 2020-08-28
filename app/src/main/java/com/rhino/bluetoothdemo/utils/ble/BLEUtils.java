@@ -31,13 +31,31 @@ public class BLEUtils {
     public final static UUID BLE_UUID = UUID.fromString("00002a05-0000-1000-8000-00805f9b34fb");
     public static final String NAME = "BLE";
 
+    /**
+     * 单例对象
+     */
+    private static BLEUtils instance;
+    /**
+     * 弱引用的回调
+     */
     private WeakReference<? extends BLECallback> callBack;
 
+    /**
+     * 蓝牙适配器
+     */
     private BluetoothAdapter bluetoothAdapter;
+    /**
+     * 蓝牙BluetoothClient实例
+     */
     private BluetoothClient bluetoothClient;
-    private static BLEUtils instance;
 
+    /**
+     * 服务端
+     */
     private BLEServer bleServer;
+    /**
+     * 客户端
+     */
     private BLEClient bleClient;
 
     /**
@@ -48,7 +66,7 @@ public class BLEUtils {
         @Override
         public void onBluetoothStateChanged(boolean openOrClosed) {
             if (openOrClosed) {
-                callBack.get().onBLEStatusChanged(BLEStatus.BLE_OPEN, "蓝牙开启");
+                callBack.get().onBLEEvent(BLEEvent.BLE_OPEN, "蓝牙开启");
             } else {
                 if (bluetoothClient != null) {
                     bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
@@ -56,7 +74,7 @@ public class BLEUtils {
                 stopSearch();
                 bleClient.disconnect();
                 bleServer.disconnect();
-                callBack.get().onBLEStatusChanged(BLEStatus.BLE_CLOSE, "蓝牙关闭");
+                callBack.get().onBLEEvent(BLEEvent.BLE_CLOSE, "蓝牙关闭");
             }
         }
     };
@@ -67,25 +85,24 @@ public class BLEUtils {
     private SearchResponse searchResponse = new SearchResponse() {
         @Override
         public void onSearchStarted() {
-            callBack.get().onBLEStatusChanged(BLEStatus.SEARCH_START, "开始搜索");
+            callBack.get().onBLEEvent(BLEEvent.SEARCH_START, "开始搜索");
         }
 
         @Override
         public void onDeviceFounded(SearchResult device) {
-            callBack.get().onBLEStatusChanged(BLEStatus.SEARCH_FOUND_DEVICE, device);
+            callBack.get().onBLEEvent(BLEEvent.SEARCH_FOUND_DEVICE, device);
         }
 
         @Override
         public void onSearchStopped() {
-            callBack.get().onBLEStatusChanged(BLEStatus.SEARCH_STOP, "停止搜索");
+            callBack.get().onBLEEvent(BLEEvent.SEARCH_STOP, "停止搜索");
         }
 
         @Override
         public void onSearchCanceled() {
-            callBack.get().onBLEStatusChanged(BLEStatus.SEARCH_CANCEL, "取消搜索");
+            callBack.get().onBLEEvent(BLEEvent.SEARCH_CANCEL, "取消搜索");
         }
     };
-
 
     public static BLEUtils getInstance() {
         if (instance == null) {
@@ -107,7 +124,7 @@ public class BLEUtils {
         }
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         this.bleServer = new BLEServer(bluetoothAdapter, callBack);
-        this.bleClient = new BLEClient(callBack);
+        this.bleClient = new BLEClient(bluetoothAdapter, callBack);
     }
 
     /**
@@ -125,10 +142,16 @@ public class BLEUtils {
         instance = null;
     }
 
+    /**
+     * 获取当前蓝牙名称
+     */
     public String getName() {
         return bluetoothAdapter.getName();
     }
 
+    /**
+     * 获取当前蓝牙地址
+     */
     public String getAddress() {
         return bluetoothAdapter.getAddress();
     }
@@ -148,7 +171,6 @@ public class BLEUtils {
         }
         return devices;
     }
-
 
     /**
      * 与设备配对
@@ -173,6 +195,28 @@ public class BLEUtils {
     }
 
     /**
+     * 打开蓝牙
+     */
+    public void open() {
+        this.bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
+        this.bluetoothClient.openBluetooth();
+    }
+
+    /**
+     * 关闭蓝牙
+     */
+    public void close() {
+        if (bluetoothClient != null) {
+            bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
+        }
+        stopSearch();
+        bleServer.disconnect();
+        bleClient.disconnect();
+        this.bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
+        this.bluetoothClient.closeBluetooth();
+    }
+
+    /**
      * 开始搜索
      */
     public void startSearch() {
@@ -182,28 +226,6 @@ public class BLEUtils {
                 .searchBluetoothLeDevice(2000)      // 再扫BLE设备2s
                 .build();
         bluetoothClient.search(request, searchResponse);
-    }
-
-    /**
-     * 打开蓝牙
-     */
-    public void openBluetooth() {
-        this.bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
-        this.bluetoothClient.openBluetooth();
-    }
-
-    /**
-     * 关闭蓝牙
-     */
-    public void closeBluetooth() {
-        if (bluetoothClient != null) {
-            bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
-        }
-        stopSearch();
-        bleServer.disconnect();
-        bleClient.disconnect();
-        this.bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
-        this.bluetoothClient.closeBluetooth();
     }
 
     /**
@@ -223,21 +245,21 @@ public class BLEUtils {
     }
 
     /**
-     * 发送数据
+     * 服务端-发送数据
      */
     public void serverWrite(String msg) {
         bleServer.doWrite(msg);
     }
 
     /**
-     * 开启等待连接线程
+     * 服务端-开启等待连接线程
      */
     public void serverStartAcceptConnectThread() {
         bleServer.startAcceptConnectThread();
     }
 
     /**
-     * 发送数据
+     * 客户端-发送数据
      */
     public void clientWrite(BluetoothDevice bluetoothDevice, String msg) {
         bleClient.write(bluetoothDevice, msg);

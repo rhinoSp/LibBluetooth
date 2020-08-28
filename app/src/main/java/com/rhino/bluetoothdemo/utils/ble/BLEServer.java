@@ -16,96 +16,49 @@ import java.io.OutputStream;
  **/
 public class BLEServer {
 
+    /**
+     * 蓝牙适配器
+     */
     private BluetoothAdapter bluetoothAdapter;
+    /**
+     * 回调事件
+     */
     private BLECallback callback;
 
+    /**
+     * Socket用于消息收发
+     */
     private BluetoothServerSocket bluetoothServerSocket;
+    /**
+     * Socket用于消息收发
+     */
     private BluetoothSocket bluetoothSocket;
 
-    private BluetoothServerSocket bluetoothServerSocketLast;
-    private BluetoothSocket bluetoothSocketLast;
-
-    private AcceptConnectThread acceptConnectThread;
-    private ReadThread readThread;
-
-    private boolean onDestroy = false;
-    private int bleStatus = BLEStatus.CONNECTING;
-
-
     /**
-     * 服务器端等待连接线程
+     * Socket用于消息收发
      */
-    private class AcceptConnectThread extends Thread {
-
-        @Override
-        public void run() {
-            try {
-                bluetoothServerSocket = bluetoothAdapter.listenUsingRfcommWithServiceRecord(BLEUtils.NAME,
-                        BLEUtils.BLE_UUID);
-                notifyStatusChanged(BLEStatus.ACCEPT_CONNECTING, "等待客户端连接中！");
-                // 等待客户端连接
-                BluetoothSocket socket = bluetoothServerSocket.accept();
-                bluetoothSocket = socket;
-                notifyStatusChanged(BLEStatus.ACCEPT_CONNECT_SUCCESS, "客户端已连接！");
-                stopReadThread();
-                startReadThread();
-
-                // 等待下一个连接
-                startNextAcceptConnectThread();
-            } catch (Exception e) {
-//                startNextAcceptConnectThread();
-                LogUtils.e("等待客户端连接失败！", e);
-                notifyStatusChanged(BLEStatus.ACCEPT_CONNECT_FAILED, "等待客户端连接失败！" + e.toString());
-            }
-        }
-    }
-
+    private BluetoothServerSocket bluetoothServerSocketLast;
+    /**
+     * Socket用于消息收发
+     */
+    private BluetoothSocket bluetoothSocketLast;
+    /**
+     * 等待连接线程
+     */
+    private AcceptConnectThread acceptConnectThread;
     /**
      * 读取数据线程
      */
-    private class ReadThread extends Thread {
+    private ReadThread readThread;
 
-        @Override
-        public void run() {
-            byte[] buffer = new byte[1024];
-            int bytes;
-            InputStream inputStream = null;
-            try {
-                inputStream = bluetoothSocket.getInputStream();
-                while (!isInterrupted() && (bytes = inputStream.read(buffer)) > 0) {
-                    byte[] buf_data = new byte[bytes];
-                    for (int i = 0; i < bytes; i++) {
-                        buf_data[i] = buffer[i];
-                    }
-                    String msg = new String(buf_data);
-//                    if ("disconnect".equals(msg)) {
-//                        stopAcceptConnectThread();
-//                        stopReadThread();
-//                        disconnect();
-//
-//                        startReadThread();
-//                        continue;
-//                    }
-                    LogUtils.i("读取数据成功：" + msg);
-                    notifyStatusChanged(BLEStatus.READ_SUCCESS, msg);
-                }
-            } catch (Exception e) {
-                if (!onDestroy && bluetoothSocket != null && !bluetoothSocket.isConnected()) {
-                    stopAcceptConnectThread();
-                    stopReadThread();
-                    closeSocket();
-                    startNextAcceptConnectThread();
-                }
+    /**
+     * 是否销毁
+     */
+    private boolean onDestroy = false;
 
-                LogUtils.e("读取数据失败！", e);
-                notifyStatusChanged(BLEStatus.READ_FAILED, "读取数据失败！" + e.toString());
-                try {
-                    inputStream.close();
-                } catch (Exception e1) {
-                    LogUtils.e(e.toString());
-                }
-            }
-        }
+    public BLEServer(BluetoothAdapter bluetoothAdapter, BLECallback callback) {
+        this.bluetoothAdapter = bluetoothAdapter;
+        this.callback = callback;
     }
 
     /**
@@ -134,23 +87,16 @@ public class BLEServer {
             mmOutStream = bluetoothSocket.getOutputStream();
             mmOutStream.write(msg.getBytes());
             LogUtils.i("发送数据成功：" + msg);
-            notifyStatusChanged(BLEStatus.WRITE_SUCCESS, "发送数据成功！");
+            notifyEvent(BLEEvent.WRITE_SUCCESS, "发送数据成功！");
         } catch (Exception e) {
             LogUtils.e("发送数据失败！", e);
-            notifyStatusChanged(BLEStatus.WRITE_FAILED, "发送数据失败！" + e.toString());
+            notifyEvent(BLEEvent.WRITE_FAILED, "发送数据失败！" + e.toString());
             try {
                 mmOutStream.close();
             } catch (Exception e1) {
                 LogUtils.e("发送数据失败！", e);
             }
         }
-    }
-
-
-    public BLEServer(BluetoothAdapter bluetoothAdapter, BLECallback callback) {
-        this.bluetoothAdapter = bluetoothAdapter;
-        this.callback = callback;
-        this.onDestroy = false;
     }
 
     /**
@@ -227,11 +173,85 @@ public class BLEServer {
     /**
      * 通知
      */
-    private void notifyStatusChanged(int bleStatus, Object obj) {
+    private void notifyEvent(BLEEvent event, Object obj) {
         if (!onDestroy) {
-            this.bleStatus = bleStatus;
-            this.callback.onBLEStatusChanged(bleStatus, obj);
+            this.callback.onBLEEvent(event, obj);
         }
     }
 
+    /**
+     * 服务器端等待连接线程
+     */
+    private class AcceptConnectThread extends Thread {
+
+        @Override
+        public void run() {
+            try {
+                bluetoothServerSocket = bluetoothAdapter.listenUsingRfcommWithServiceRecord(BLEUtils.NAME,
+                        BLEUtils.BLE_UUID);
+                notifyEvent(BLEEvent.ACCEPT_CONNECTING, "等待客户端连接中！");
+                // 等待客户端连接
+                BluetoothSocket socket = bluetoothServerSocket.accept();
+                bluetoothSocket = socket;
+                notifyEvent(BLEEvent.ACCEPT_CONNECT_SUCCESS, "客户端已连接！");
+                stopReadThread();
+                startReadThread();
+
+                // 等待下一个连接
+                startNextAcceptConnectThread();
+            } catch (Exception e) {
+//                startNextAcceptConnectThread();
+                LogUtils.e("等待客户端连接失败！", e);
+                notifyEvent(BLEEvent.ACCEPT_CONNECT_FAILED, "等待客户端连接失败！" + e.toString());
+            }
+        }
+    }
+
+    /**
+     * 读取数据线程
+     */
+    private class ReadThread extends Thread {
+
+        @Override
+        public void run() {
+            byte[] buffer = new byte[1024];
+            int bytes;
+            InputStream inputStream = null;
+            try {
+                inputStream = bluetoothSocket.getInputStream();
+                while (!isInterrupted() && (bytes = inputStream.read(buffer)) > 0) {
+                    byte[] buf_data = new byte[bytes];
+                    for (int i = 0; i < bytes; i++) {
+                        buf_data[i] = buffer[i];
+                    }
+                    String msg = new String(buf_data);
+//                    if ("disconnect".equals(msg)) {
+//                        stopAcceptConnectThread();
+//                        stopReadThread();
+//                        disconnect();
+//
+//                        startReadThread();
+//                        continue;
+//                    }
+                    LogUtils.i("读取数据成功：" + msg);
+                    notifyEvent(BLEEvent.READ_SUCCESS, msg);
+                }
+            } catch (Exception e) {
+                if (!onDestroy && bluetoothSocket != null && !bluetoothSocket.isConnected()) {
+                    stopAcceptConnectThread();
+                    stopReadThread();
+                    closeSocket();
+                    startNextAcceptConnectThread();
+                }
+
+                LogUtils.e("读取数据失败！", e);
+                notifyEvent(BLEEvent.READ_FAILED, "读取数据失败！" + e.toString());
+                try {
+                    inputStream.close();
+                } catch (Exception e1) {
+                    LogUtils.e(e.toString());
+                }
+            }
+        }
+    }
 }
