@@ -143,20 +143,6 @@ public class BLEUtils {
     }
 
     /**
-     * 获取当前蓝牙名称
-     */
-    public String getName() {
-        return bluetoothAdapter.getName();
-    }
-
-    /**
-     * 获取当前蓝牙地址
-     */
-    public String getAddress() {
-        return bluetoothAdapter.getAddress();
-    }
-
-    /**
      * 获取已经配对的设备
      */
     public List<BluetoothDevice> getBondedDevices() {
@@ -263,6 +249,27 @@ public class BLEUtils {
      */
     public void clientWrite(BluetoothDevice bluetoothDevice, String msg) {
         bleClient.write(bluetoothDevice, msg);
+    }
+
+    /**
+     * 获取当前蓝牙名称
+     */
+    public static String getName() {
+        return BluetoothAdapter.getDefaultAdapter().getName();
+    }
+
+    /**
+     * 设置蓝牙名称
+     */
+    public static void setName(String name) {
+        BluetoothAdapter.getDefaultAdapter().setName(name);
+    }
+
+    /**
+     * 获取当前蓝牙地址
+     */
+    public static String getAddress() {
+        return BluetoothAdapter.getDefaultAdapter().getAddress();
     }
 
 }

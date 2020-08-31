@@ -146,7 +146,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
             BLEUtils.getInstance().startSearch();
             BLEUtils.getInstance().serverStartAcceptConnectThread();
         }
-        setTitle("您的蓝牙名称：" + BLEUtils.getInstance().getName());
+        setTitle("您的蓝牙名称：" + BLEUtils.getName());
     }
 
     /**
@@ -321,14 +321,14 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
      * 构建hello消息
      */
     private String createHelloMsg(BluetoothDevice device) {
-        return "Hello " + device.getName() + ", I am " + BLEUtils.getInstance().getName();
+        return "Hello " + device.getName() + ", I am " + BLEUtils.getName();
     }
 
     /**
      * 构建hi消息
      */
     private String createHiMsg() {
-        return "Hi " + ", I am " + BLEUtils.getInstance().getName();
+        return "Hi " + ", I am " + BLEUtils.getName();
     }
 
     /**
