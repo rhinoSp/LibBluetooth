@@ -1,4 +1,4 @@
-package com.rhino.bluetoothdemo.utils;
+package com.rhino.ble.demo.utils;
 
 import android.annotation.SuppressLint;
 
@@ -7,7 +7,6 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Locale;
 import java.util.TimeZone;
 
 

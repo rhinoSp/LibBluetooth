@@ -1,4 +1,4 @@
-package com.rhino.bluetoothdemo;
+package com.rhino.ble.demo;
 
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
@@ -16,11 +16,11 @@ import android.widget.Toast;
 
 import com.inuker.bluetooth.library.search.SearchResult;
 
-import com.rhino.bluetoothdemo.utils.TimeUtils;
-import com.rhino.bluetoothdemo.utils.ble.BLECallback;
-import com.rhino.bluetoothdemo.utils.ble.BLEUtils;
-import com.rhino.bluetoothdemo.utils.ble.BLEEvent;
-import com.rhino.bluetoothdemo.utils.PermissionsUtils;
+import com.rhino.ble.demo.utils.TimeUtils;
+import com.rhino.ble.demo.utils.PermissionsUtils;
+import com.rhino.ble.BLECallback;
+import com.rhino.ble.BLEUtils;
+import com.rhino.ble.BLEEvent;
 import com.rhino.log.LogUtils;
 
 import java.util.ArrayList;
@@ -139,10 +139,10 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
      * 获得所有权限
      */
     private void onGetAllRequest() {
-        BLEUtils.getInstance().onCreate(this);
+        BLEUtils.getInstance().onCreate(this, this);
         if (BLEUtils.getInstance().isBluetoothOpened()) {
             // 如果蓝牙是开着的，直接开始搜索
-            BLEUtils.getInstance().setDiscoverable(60);
+            BLEUtils.getInstance().setDiscoverable(this, 60);
             BLEUtils.getInstance().startSearch();
             BLEUtils.getInstance().serverStartAcceptConnectThread();
         }
@@ -189,7 +189,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
             adapterMsgList.notifyDataSetChanged();
         }
 
-        String msg = "Hello " + device.getName() + ", I am " + BLEUtils.getInstance().getName();
+        String msg = createHelloMsg(device);
         BLEUtils.getInstance().clientWrite(device, msg);
 
         notifyMsgList("[我]" + msg);
@@ -206,7 +206,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
             case BLE_OPEN:
                 notifyLogList("蓝牙已开启！");
                 refreshList();
-                BLEUtils.getInstance().setDiscoverable(60);
+                BLEUtils.getInstance().setDiscoverable(this, 60);
                 BLEUtils.getInstance().startSearch();
                 BLEUtils.getInstance().serverStartAcceptConnectThread();
                 break;
@@ -242,8 +242,8 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 notifyLogList("收到消息：" + obj);
                 notifyMsgList("[对方]" + obj);
                 if (((String) obj).startsWith("Hello")) {
-                    String msg = "Hi " + ", I am " + BLEUtils.getInstance().getName();
-                    BLEUtils.getInstance().serverWrite("Hi " + ", I am " + BLEUtils.getInstance().getName());
+                    String msg = createHiMsg();
+                    BLEUtils.getInstance().serverWrite(msg);
                     notifyLogList("发送消息" + msg);
                     notifyMsgList("[我]" + msg);
                 }
@@ -315,6 +315,20 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
         msgList.add(currentTime() + "\n" + msg);
         adapterMsgList.notifyDataSetChanged();
         listViewMsg.setSelection(listViewMsg.getBottom());
+    }
+
+    /**
+     * 构建hello消息
+     */
+    private String createHelloMsg(BluetoothDevice device) {
+        return "Hello " + device.getName() + ", I am " + BLEUtils.getInstance().getName();
+    }
+
+    /**
+     * 构建hi消息
+     */
+    private String createHiMsg() {
+        return "Hi " + ", I am " + BLEUtils.getInstance().getName();
     }
 
     /**

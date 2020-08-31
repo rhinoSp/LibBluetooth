@@ -1,4 +1,4 @@
-package com.rhino.bluetoothdemo;
+package com.rhino.ble.demo;
 
 import android.app.Application;
 

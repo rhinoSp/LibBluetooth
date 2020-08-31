@@ -1,7 +1,8 @@
-package com.rhino.bluetoothdemo.utils.ble;
+package com.rhino.ble;
+
+import android.content.Context;
 
 import com.inuker.bluetooth.library.BluetoothClient;
-import com.rhino.bluetoothdemo.App;
 
 /**
  * @author rhino
@@ -11,11 +12,11 @@ public class BLEManager {
 
     private static BluetoothClient mClient;
 
-    public static BluetoothClient getClient() {
+    public static BluetoothClient getClient(Context context) {
         if (mClient == null) {
             synchronized (BLEManager.class) {
                 if (mClient == null) {
-                    mClient = new BluetoothClient(App.getInstance());
+                    mClient = new BluetoothClient(context);
                 }
             }
         }

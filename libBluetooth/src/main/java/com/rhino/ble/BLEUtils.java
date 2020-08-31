@@ -1,7 +1,8 @@
-package com.rhino.bluetoothdemo.utils.ble;
+package com.rhino.ble;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.Context;
 import android.content.Intent;
 
 import com.inuker.bluetooth.library.BluetoothClient;
@@ -9,7 +10,6 @@ import com.inuker.bluetooth.library.connect.listener.BluetoothStateListener;
 import com.inuker.bluetooth.library.search.SearchRequest;
 import com.inuker.bluetooth.library.search.SearchResult;
 import com.inuker.bluetooth.library.search.response.SearchResponse;
-import com.rhino.bluetoothdemo.App;
 import com.rhino.log.LogUtils;
 
 import java.lang.ref.WeakReference;
@@ -117,10 +117,10 @@ public class BLEUtils {
     /**
      * 在activity.onCreate()中调用
      */
-    public void onCreate(BLECallback callBack) {
+    public void onCreate(Context context, BLECallback callBack) {
         this.callBack = new WeakReference<>(callBack);
         if (this.bluetoothClient == null) {
-            this.bluetoothClient = BLEManager.getClient();
+            this.bluetoothClient = BLEManager.getClient(context);
         }
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         this.bleServer = new BLEServer(bluetoothAdapter, callBack);
@@ -187,11 +187,11 @@ public class BLEUtils {
     /**
      * 设置蓝牙可被发现
      */
-    public void setDiscoverable(int second) {
+    public void setDiscoverable(Context context, int second) {
         Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
         discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, second);
         discoverableIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        App.getInstance().startActivity(discoverableIntent);
+        context.startActivity(discoverableIntent);
     }
 
     /**
