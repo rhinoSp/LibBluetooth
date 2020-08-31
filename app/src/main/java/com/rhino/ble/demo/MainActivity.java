@@ -205,7 +205,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
         switch (event) {
             case BLE_OPEN:
                 notifyLogList("蓝牙已开启！");
-                refreshList();
+                notifyBleList();
                 BLEUtils.getInstance().setDiscoverable(this, 60);
                 BLEUtils.getInstance().startSearch();
                 BLEUtils.getInstance().serverStartAcceptConnectThread();
@@ -213,14 +213,14 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
             case BLE_CLOSE:
                 notifyLogList("蓝牙已关闭！");
                 bluetoothDeviceList.clear();
-                refreshList();
+                notifyBleList();
                 break;
             case ACCEPT_CONNECTING:
                 notifyLogList("正在等待客户端连接！");
                 break;
             case ACCEPT_CONNECT_SUCCESS:
                 notifyLogList("客户端已连接！");
-                refreshList();
+                notifyBleList();
                 break;
             case ACCEPT_CONNECT_FAILED:
                 notifyLogList((String) obj);
@@ -233,7 +233,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 break;
             case CONNECT_SUCCESS:
                 notifyLogList("已连接服务器！");
-                refreshList();
+                notifyBleList();
                 break;
             case CONNECT_FAILED:
                 notifyLogList((String) obj);
@@ -265,7 +265,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 if (!TextUtils.isEmpty(device.device.getName()) && !bluetoothDeviceList.contains(device.device)) {
                     notifyLogList("搜索到设备：" + device.device.getName());
                     bluetoothDeviceList.add(device.device);
-                    refreshList();
+                    notifyBleList();
                 }
                 break;
             case SEARCH_CANCEL:
@@ -279,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
     /**
      * 刷新蓝牙列表
      */
-    private void refreshList() {
+    private void notifyBleList() {
         bluetoothNameList.clear();
         if (BLEUtils.getInstance().isBluetoothOpened()) {
             List<BluetoothDevice> bondedBluetoothDeviceList = BLEUtils.getInstance().getBondedDevices();
