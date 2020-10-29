@@ -50,7 +50,7 @@ dependencies {
     api rootProject.ext.dependencies["appcompat-v7"]
 
     implementation 'com.inuker.bluetooth:library:1.4.0'
+    implementation 'com.github.rhinoSp:LibLog:v1.4.5'
 
-    implementation(name: 'com.rhino.log-libLog-v1.4.2', ext: 'aar')
     implementation project(path: ':libBluetooth')
 }

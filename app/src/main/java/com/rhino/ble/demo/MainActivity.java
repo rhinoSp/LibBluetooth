@@ -273,6 +273,9 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 break;
             case SEARCH_STOP:
                 notifyLogList("搜索完成！");
+                break;
+            default:
+                break;
         }
     }
 
