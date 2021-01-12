@@ -26,11 +26,13 @@ import java.util.UUID;
 public class BLEUtils {
 
     /**
+     * 用于服务端蓝牙监听连接name
+     */
+    public static String NAME = "BLE";
+    /**
      * 用于蓝牙之间通信的uuid
      */
-    public final static UUID BLE_UUID = UUID.fromString("00002a05-0000-1000-8000-00805f9b34fb");
-    public static final String NAME = "BLE";
-
+    public static UUID BLE_UUID = UUID.fromString("00002a05-0000-1000-8000-00805f9b34fb");
     /**
      * 单例对象
      */
@@ -134,10 +136,16 @@ public class BLEUtils {
         if (bluetoothClient != null) {
             bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
         }
-        callBack.clear();
+        if (callBack != null) {
+            callBack.clear();
+        }
         stopSearch();
-        bleServer.onDestroy();
-        bleClient.onDestroy();
+        if (bleServer != null) {
+            bleServer.onDestroy();
+        }
+        if (bleClient != null) {
+            bleClient.onDestroy();
+        }
         bluetoothClient = null;
         instance = null;
     }
@@ -147,6 +155,9 @@ public class BLEUtils {
      */
     public List<BluetoothDevice> getBondedDevices() {
         List<BluetoothDevice> devices = new ArrayList<>();
+        if (bluetoothAdapter == null) {
+            return devices;
+        }
         Set<BluetoothDevice> pairedDevices = bluetoothAdapter.getBondedDevices();
         // 判断是否有配对过的设备
         if (pairedDevices.size() > 0) {
@@ -184,8 +195,11 @@ public class BLEUtils {
      * 打开蓝牙
      */
     public void open() {
-        this.bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
-        this.bluetoothClient.openBluetooth();
+        if (bluetoothClient == null) {
+            return;
+        }
+        bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
+        bluetoothClient.openBluetooth();
     }
 
     /**
@@ -196,16 +210,25 @@ public class BLEUtils {
             bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
         }
         stopSearch();
-        bleServer.disconnect();
-        bleClient.disconnect();
-        this.bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
-        this.bluetoothClient.closeBluetooth();
+        if (bleServer != null) {
+            bleServer.disconnect();
+        }
+        if (bleClient != null) {
+            bleClient.disconnect();
+        }
+        if (bluetoothClient != null) {
+            bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
+            bluetoothClient.closeBluetooth();
+        }
     }
 
     /**
      * 开始搜索
      */
     public void startSearch() {
+        if (bluetoothClient == null) {
+            return;
+        }
         SearchRequest request = new SearchRequest.Builder()
                 .searchBluetoothLeDevice(3000, 3)   // 先扫BLE设备3次，每次3s
                 .searchBluetoothClassicDevice(5000) // 再扫经典蓝牙5s
@@ -218,15 +241,19 @@ public class BLEUtils {
      * 停止搜索
      */
     public void stopSearch() {
-        if (bluetoothClient != null) {
-            bluetoothClient.stopSearch();
+        if (bluetoothClient == null) {
+            return;
         }
+        bluetoothClient.stopSearch();
     }
 
     /**
      * 蓝牙是否打开
      */
     public boolean isBluetoothOpened() {
+        if (bluetoothClient == null) {
+            return false;
+        }
         return bluetoothClient.isBluetoothOpened();
     }
 
@@ -234,6 +261,9 @@ public class BLEUtils {
      * 服务端-发送数据
      */
     public void serverWrite(String msg) {
+        if (bleServer == null) {
+            return;
+        }
         bleServer.doWrite(msg);
     }
 
@@ -241,6 +271,9 @@ public class BLEUtils {
      * 服务端-开启等待连接线程
      */
     public void serverStartAcceptConnectThread() {
+        if (bleServer == null) {
+            return;
+        }
         bleServer.startAcceptConnectThread();
     }
 
@@ -248,6 +281,9 @@ public class BLEUtils {
      * 客户端-发送数据
      */
     public void clientWrite(BluetoothDevice bluetoothDevice, String msg) {
+        if (bleClient == null) {
+            return;
+        }
         bleClient.write(bluetoothDevice, msg);
     }
 
