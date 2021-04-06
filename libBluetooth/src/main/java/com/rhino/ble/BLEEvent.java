@@ -43,6 +43,10 @@ public enum BLEEvent {
      * 客户端连接主机连接失败
      */
     CONNECT_FAILED,
+    /**
+     * 断开链接
+     */
+    DISCONNECTED,
 
     /**
      * 读取成功
@@ -78,6 +82,11 @@ public enum BLEEvent {
     /**
      * 停止搜索
      */
-    SEARCH_STOP;
+    SEARCH_STOP,
+
+    /**
+     * 未知
+     */
+    UNKNOWN;
 
 }

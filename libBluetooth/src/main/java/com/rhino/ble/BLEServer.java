@@ -9,6 +9,7 @@ import com.rhino.log.LogUtils;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.UUID;
 
 /**
  * @author rhino
@@ -188,7 +189,7 @@ public class BLEServer {
         public void run() {
             try {
                 bluetoothServerSocket = bluetoothAdapter.listenUsingRfcommWithServiceRecord(BLEUtils.NAME,
-                        BLEUtils.BLE_UUID);
+                        UUID.fromString(BLEUtils.BLE_CLASSIC_UUID));
                 notifyEvent(BLEEvent.ACCEPT_CONNECTING, "等待客户端连接中！");
                 // 等待客户端连接
                 BluetoothSocket socket = bluetoothServerSocket.accept();
@@ -225,14 +226,6 @@ public class BLEServer {
                         buf_data[i] = buffer[i];
                     }
                     String msg = new String(buf_data);
-//                    if ("disconnect".equals(msg)) {
-//                        stopAcceptConnectThread();
-//                        stopReadThread();
-//                        disconnect();
-//
-//                        startReadThread();
-//                        continue;
-//                    }
                     LogUtils.i("读取数据成功：" + msg);
                     notifyEvent(BLEEvent.READ_SUCCESS, msg);
                 }

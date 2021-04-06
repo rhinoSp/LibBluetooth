@@ -3,18 +3,20 @@ package com.rhino.ble;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.text.TextUtils;
 
 import com.rhino.log.LogUtils;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.UUID;
 
 /**
  * @author rhino
  * @since Create on 2020/08/29.
  **/
-public class BLEClient {
+public class BLEClientClassic {
 
     /**
      * 蓝牙适配器
@@ -49,9 +51,17 @@ public class BLEClient {
     private boolean onDestroy = false;
 
 
-    public BLEClient(BluetoothAdapter bluetoothAdapter, BLECallback callback) {
+    public BLEClientClassic(BluetoothAdapter bluetoothAdapter, BLECallback callback) {
         this.bluetoothAdapter = bluetoothAdapter;
         this.callback = callback;
+    }
+
+    /**
+     * 连接蓝牙
+     */
+    public void connect(BluetoothDevice bluetoothDevice) {
+        closeSocket();
+        startConnectThread(bluetoothDevice, null);
     }
 
     /**
@@ -63,7 +73,7 @@ public class BLEClient {
             notifyEvent(BLEEvent.CONNECTED, "已连接服务器！");
             doWrite(msg);
         } else {
-            // 未连接该设备
+            // 未连接该设备，关闭已连接设备
             closeSocket();
             startConnectThread(bluetoothDevice, msg);
         }
@@ -72,7 +82,7 @@ public class BLEClient {
     /**
      * 发送数据
      */
-    private void  doWrite(String msg) {
+    private void doWrite(String msg) {
         OutputStream outputStream = null;
         try {
             outputStream = bluetoothSocket.getOutputStream();
@@ -190,7 +200,7 @@ public class BLEClient {
         @Override
         public void run() {
             try {
-                bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(BLEUtils.BLE_UUID);
+                bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(UUID.fromString(BLEUtils.BLE_CLASSIC_UUID));
                 notifyEvent(BLEEvent.CONNECTING, "连接服务器中！");
                 bluetoothSocket.connect();
                 notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务器成功！");
@@ -200,7 +210,9 @@ public class BLEClient {
                 // 开启读线程
                 startReadThread();
                 // 发送数据
-                doWrite(msg);
+                if (!TextUtils.isEmpty(msg)) {
+                    doWrite(msg);
+                }
             } catch (Exception e) {
                 notifyEvent(BLEEvent.READ_FAILED, "连接服务器失败！" + e.toString());
                 LogUtils.e("连接服务器失败！", e);

@@ -189,13 +189,13 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
             adapterMsgList.notifyDataSetChanged();
         }
 
-        String msg = createHelloMsg(device);
-        BLEUtils.getInstance().clientWrite(device, msg);
-
-        notifyMsgList("[我]" + msg);
-
-        connectBluetoothDevice = device;
-        textViewMsg.setText("消息列表【" + device.getName() + "】");
+//        String msg = createHelloMsg(device);
+//        BLEUtils.getInstance().clientWrite(device, msg);
+//
+//        notifyMsgList("[我]" + msg);
+//
+//        connectBluetoothDevice = device;
+//        textViewMsg.setText("消息列表【" + device.getName() + "】");
     }
 
     /**
@@ -261,10 +261,11 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 notifyLogList("开始搜索！");
                 break;
             case SEARCH_FOUND_DEVICE:
-                SearchResult device = (SearchResult) obj;
-                if (!TextUtils.isEmpty(device.device.getName()) && !bluetoothDeviceList.contains(device.device)) {
-                    notifyLogList("搜索到设备：" + device.device.getName());
-                    bluetoothDeviceList.add(device.device);
+                SearchResult searchResult = (SearchResult) obj;
+                if (!bluetoothDeviceList.contains(searchResult.device)) {
+                    // 去重
+                    notifyLogList("搜索到设备：" + (TextUtils.isEmpty(searchResult.device.getName()) ? "" : searchResult.device.getName()));
+                    bluetoothDeviceList.add(searchResult.device);
                     notifyBleList();
                 }
                 break;
@@ -296,7 +297,9 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 if (bondedBluetoothDeviceList.contains(device)) {
                     status = "已配对";
                 }
-                bluetoothNameList.add(device.getName() + "（" + status + "）");
+                String name = TextUtils.isEmpty(device.getName()) ? "N/A" : device.getName();
+                String ble = BLEUtils.isBLE(device) ? "[BLE]" : "";
+                bluetoothNameList.add(name + "（" + status + "）" + ble);
             }
         }
         adapterBluetoothList.notifyDataSetChanged();

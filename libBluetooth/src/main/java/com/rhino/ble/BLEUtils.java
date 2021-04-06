@@ -17,7 +17,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * @author rhino
@@ -26,17 +25,22 @@ import java.util.UUID;
 public class BLEUtils {
 
     /**
-     * 用于服务端蓝牙监听连接name
+     * 传统蓝牙用于服务端蓝牙监听连接name
      */
     public static String NAME = "BLE";
     /**
-     * 用于蓝牙之间通信的uuid
+     * 传统蓝牙之间通信的uuid
      */
-    public static UUID BLE_UUID = UUID.fromString("00002a05-0000-1000-8000-00805f9b34fb");
+    public static String BLE_CLASSIC_UUID = "00002a05-0000-1000-8000-00805f9b34fb";
     /**
-     * 单例对象
+     * 低功耗蓝牙的特征值uuid，发送
      */
-    private static BLEUtils instance;
+    public static String BLE_lE_UUID_SERVICE_EIGENVALUE_SEND = "0000ffe1-0000-1000-8000-00805f9b34fb";
+    /**
+     * 低功耗蓝牙的特征值uuid，接收
+     */
+    public static String BLE_LE_UUID_SERVICE_EIGENVALUE_READ = "00002902-0000-1000-8000-00805f9b34fb";
+
     /**
      * 弱引用的回调
      */
@@ -58,7 +62,11 @@ public class BLEUtils {
     /**
      * 客户端
      */
-    private BLEClient bleClient;
+    private BLEClientClassic bleClientClassic;
+    /**
+     * 客户端
+     */
+    private BLEClientLe bleClientLe;
 
     /**
      * 监听蓝牙状态改变
@@ -74,8 +82,9 @@ public class BLEUtils {
                     bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
                 }
                 stopSearch();
-                bleClient.disconnect();
                 bleServer.disconnect();
+                bleClientClassic.disconnect();
+                bleClientLe.disconnect();
                 callBack.get().onBLEEvent(BLEEvent.BLE_CLOSE, "蓝牙关闭");
             }
         }
@@ -107,10 +116,11 @@ public class BLEUtils {
     };
 
     public static BLEUtils getInstance() {
-        if (instance == null) {
-            instance = new BLEUtils();
-        }
-        return instance;
+        return Builder.instance;
+    }
+
+    public static class Builder {
+        private static BLEUtils instance = new BLEUtils();
     }
 
     private BLEUtils() {
@@ -126,7 +136,8 @@ public class BLEUtils {
         }
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         this.bleServer = new BLEServer(bluetoothAdapter, callBack);
-        this.bleClient = new BLEClient(bluetoothAdapter, callBack);
+        this.bleClientClassic = new BLEClientClassic(bluetoothAdapter, callBack);
+        this.bleClientLe = new BLEClientLe(context, bluetoothAdapter, callBack);
     }
 
     /**
@@ -143,11 +154,13 @@ public class BLEUtils {
         if (bleServer != null) {
             bleServer.onDestroy();
         }
-        if (bleClient != null) {
-            bleClient.onDestroy();
+        if (bleClientClassic != null) {
+            bleClientClassic.onDestroy();
+        }
+        if (bleClientLe != null) {
+            bleClientLe.onDestroy();
         }
         bluetoothClient = null;
-        instance = null;
     }
 
     /**
@@ -213,8 +226,8 @@ public class BLEUtils {
         if (bleServer != null) {
             bleServer.disconnect();
         }
-        if (bleClient != null) {
-            bleClient.disconnect();
+        if (bleClientLe != null) {
+            bleClientLe.disconnect();
         }
         if (bluetoothClient != null) {
             bluetoothClient.registerBluetoothStateListener(bluetoothStateListener);
@@ -230,11 +243,21 @@ public class BLEUtils {
             return;
         }
         SearchRequest request = new SearchRequest.Builder()
-                .searchBluetoothLeDevice(3000, 3)   // 先扫BLE设备3次，每次3s
+                .searchBluetoothLeDevice(5000, 3)   // 先扫BLE设备3次，每次3s
                 .searchBluetoothClassicDevice(5000) // 再扫经典蓝牙5s
                 .searchBluetoothLeDevice(2000)      // 再扫BLE设备2s
                 .build();
-        bluetoothClient.search(request, searchResponse);
+        startSearch(request);
+    }
+
+    /**
+     * 开始搜索
+     */
+    public void startSearch(SearchRequest searchRequest) {
+        if (bluetoothClient == null) {
+            return;
+        }
+        bluetoothClient.search(searchRequest, searchResponse);
     }
 
     /**
@@ -278,13 +301,44 @@ public class BLEUtils {
     }
 
     /**
+     * 客户端-连接蓝牙
+     */
+    public void clientConnect(BluetoothDevice bluetoothDevice) {
+        if (isBLE(bluetoothDevice)) {
+            if (bleClientLe != null) {
+                bleClientLe.connect(bluetoothDevice);
+            }
+        } else {
+            if (bleClientClassic != null) {
+                bleClientClassic.connect(bluetoothDevice);
+            }
+        }
+    }
+
+    /**
      * 客户端-发送数据
      */
     public void clientWrite(BluetoothDevice bluetoothDevice, String msg) {
-        if (bleClient == null) {
+        if (bleClientClassic == null) {
             return;
         }
-        bleClient.write(bluetoothDevice, msg);
+        bleClientClassic.write(bluetoothDevice, msg);
+        if (isBLE(bluetoothDevice)) {
+            if (bleClientLe != null) {
+                bleClientLe.write(bluetoothDevice, msg);
+            }
+        } else {
+            if (bleClientClassic != null) {
+                bleClientClassic.write(bluetoothDevice, msg);
+            }
+        }
+    }
+
+    /**
+     * 判断蓝牙是否ble蓝牙
+     */
+    public static boolean isBLE(BluetoothDevice bluetoothDevice) {
+        return bluetoothDevice.getType() == BluetoothDevice.DEVICE_TYPE_LE;
     }
 
     /**
