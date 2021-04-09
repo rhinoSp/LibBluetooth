@@ -214,7 +214,7 @@ public class BLEClientLe {
             // 延迟扫描服务（设置延迟时间过短，很可能发现不了服务）
             LogUtils.d("延迟扫描服务");
             threadSleep(1500);
-            if (detectionGattValid()) {
+            if (!detectionGattValid()) {
                 return;
             }
             LogUtils.d("开始扫描服务");
@@ -253,7 +253,7 @@ public class BLEClientLe {
             switch (newState) {
                 case BluetoothGatt.STATE_CONNECTED:
                     LogUtils.d("蓝牙连接成功，开始获取服务UUID");
-                    if (detectionGattValid()) {
+                    if (!detectionGattValid()) {
                         return;
                     }
                     startDiscoverServicesThread();
@@ -301,7 +301,7 @@ public class BLEClientLe {
                 LogUtils.w("received: " + status);
                 return;
             }
-            if (detectionGattValid()) {
+            if (!detectionGattValid()) {
                 return;
             }
             if (discoverServicesThread != null) {
