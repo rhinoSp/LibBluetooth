@@ -347,7 +347,9 @@ public class BLEClientLe {
         public void onCharacteristicChanged(BluetoothGatt gatt, final BluetoothGattCharacteristic characteristic) {
             super.onCharacteristicChanged(gatt, characteristic);
             // 设备发出通知时会调用到该接口，蓝牙模块发送的所有数据都会回调到这里
-            notifyEvent(BLEEvent.READ_SUCCESS, new String(characteristic.getValue()));
+            String msg = new String(characteristic.getValue());
+            LogUtils.d("获取到数据:" + msg);
+            notifyEvent(BLEEvent.READ_SUCCESS, msg);
         }
     };
 

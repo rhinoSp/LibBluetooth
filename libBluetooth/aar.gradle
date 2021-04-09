@@ -10,7 +10,7 @@ ext.aarOutPutDir = "${rootDir}/repositories"
 ext.aarPackageName = "com.rhino.ble"
 ext.aarArtifactId = "libBluetooth"
 ext.aarVersionName = "1.0"
-ext.aarVersionCode = 5
+ext.aarVersionCode = 6
 
 afterEvaluate {
     project.tasks.findAll {

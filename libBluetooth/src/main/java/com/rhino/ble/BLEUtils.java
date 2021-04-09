@@ -321,10 +321,6 @@ public class BLEUtils {
      * 客户端-发送数据
      */
     public void clientWrite(BluetoothDevice bluetoothDevice, String msg) {
-        if (bleClientClassic == null) {
-            return;
-        }
-        bleClientClassic.write(bluetoothDevice, msg);
         if (isBLE(bluetoothDevice)) {
             if (bleClientLe != null) {
                 bleClientLe.write(bluetoothDevice, msg);
