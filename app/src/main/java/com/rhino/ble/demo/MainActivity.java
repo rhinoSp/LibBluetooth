@@ -229,7 +229,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 notifyLogList("正在连接服务器");
                 break;
             case CONNECTED:
-                notifyLogList("已经连接过服务器，发送数据中");
+                notifyLogList("已经连接过服务器");
                 break;
             case CONNECT_SUCCESS:
                 notifyLogList("已连接服务器");

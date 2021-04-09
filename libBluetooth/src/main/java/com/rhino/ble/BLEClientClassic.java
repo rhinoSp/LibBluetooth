@@ -57,10 +57,21 @@ public class BLEClientClassic {
     }
 
     /**
+     * 是否已连接
+     */
+    private boolean isConnected() {
+        return bluetoothSocket != null && bluetoothSocket.isConnected();
+    }
+
+    /**
      * 连接服务
      */
     public void connect(BluetoothDevice bluetoothDevice) {
-        closeSocket();
+        if (isConnected() && bluetoothDevice.equals(bluetoothDeviceConnected)) {
+            notifyEvent(BLEEvent.CONNECTED, "已连接服务器");
+            return;
+        }
+        disconnect();
         startConnectThread(bluetoothDevice, null);
     }
 
@@ -68,13 +79,12 @@ public class BLEClientClassic {
      * 发送数据,未连接会服务器自动连接
      */
     public void write(BluetoothDevice bluetoothDevice, String msg) {
-        if (bluetoothSocket != null && bluetoothSocket.isConnected() && bluetoothDevice.equals(bluetoothDeviceConnected)) {
+        if (isConnected() && bluetoothDevice.equals(bluetoothDeviceConnected)) {
             // 已连接该设备服务器,直接发送
-            notifyEvent(BLEEvent.CONNECTED, "已连接服务器");
             doWrite(msg);
         } else {
             // 未连接该设备，关闭已连接设备
-            closeSocket();
+            disconnect();
             startConnectThread(bluetoothDevice, msg);
         }
     }
@@ -151,10 +161,10 @@ public class BLEClientClassic {
     }
 
     /**
-     * 关闭套接字连接
+     * 断开连接
      */
-    private void closeSocket() {
-        LogUtils.d("关闭蓝牙连接");
+    public void disconnect() {
+        LogUtils.d("断开蓝牙连接");
         try {
             bluetoothDeviceConnected = null;
             if (bluetoothSocket != null) {
@@ -163,14 +173,6 @@ public class BLEClientClassic {
         } catch (IOException e) {
             LogUtils.e("断开连接失败", e);
         }
-    }
-
-    /**
-     * 断开连接
-     */
-    public void disconnect() {
-        LogUtils.d("断开蓝牙连接");
-        closeSocket();
         stopConnectThread();
         stopReadThread();
     }

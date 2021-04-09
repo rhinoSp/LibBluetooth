@@ -73,9 +73,21 @@ public class BLEClientLe {
     }
 
     /**
+     * 是否已连接
+     */
+    private boolean isConnected() {
+        return bluetoothGatt != null && bluetoothGattCharacteristic != null;
+    }
+
+    /**
      * 连接服务器
      */
     public void connect(BluetoothDevice bluetoothDevice) {
+        if (isConnected() && bluetoothDevice.equals(bluetoothDeviceConnected)) {
+            notifyEvent(BLEEvent.CONNECTED, "已连接服务器");
+            return;
+        }
+        disconnect();
         startConnectThread(bluetoothDevice);
     }
 
@@ -88,8 +100,8 @@ public class BLEClientLe {
             doWrite(msg);
         } else {
             // 未连接该设备，关闭已连接设备
-            LogUtils.w("未连接服务");
-            notifyEvent(BLEEvent.WRITE_FAILED, "未连接服务");
+            disconnect();
+            startConnectThread(bluetoothDevice);
         }
     }
 
@@ -288,8 +300,8 @@ public class BLEClientLe {
             }
             //mBluetoothGatt.writeDescriptor(descriptor);
             //来到这里，才算真正的建立连接
-            LogUtils.d("设置监听成功，" + gatt.getDevice().getName() + ", " + gatt.getDevice().getAddress());
-            notifyEvent(BLEEvent.CONNECTED, "设置监听成功");
+            LogUtils.d("连接服务器成功，" + gatt.getDevice().getName() + ", " + gatt.getDevice().getAddress());
+            notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务器成功");
         }
 
         @Override
@@ -335,7 +347,6 @@ public class BLEClientLe {
                             BluetoothGattService linkLossService = gatt.getService(bluetoothGattService.getUuid());
                             setNotification(bluetoothGatt, linkLossService.getCharacteristic(UUID.fromString(BLEUtils.BLE_LE_UUID_SERVICE_EIGENVALUE_READ)), true);
                         }
-                        notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务器成功");
                     } else {
                         LogUtils.d(i + "号服务的第" + j + "个特征" + bluetoothGattCharacteristic.getUuid().toString());
                     }
@@ -352,10 +363,6 @@ public class BLEClientLe {
             notifyEvent(BLEEvent.READ_SUCCESS, msg);
         }
     };
-
-    private boolean isConnected() {
-        return bluetoothGatt != null && bluetoothGattCharacteristic != null;
-    }
 
     private boolean detectionGattValid() {
         if (bluetoothGatt == null) {
