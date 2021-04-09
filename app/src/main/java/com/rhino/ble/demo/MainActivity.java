@@ -204,35 +204,35 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
     private void dealBLEEvent(BLEEvent event, Object obj) {
         switch (event) {
             case BLE_OPEN:
-                notifyLogList("蓝牙已开启！");
+                notifyLogList("蓝牙已开启");
                 notifyBleList();
                 BLEUtils.getInstance().setDiscoverable(this, 60);
                 BLEUtils.getInstance().startSearch();
                 BLEUtils.getInstance().serverStartAcceptConnectThread();
                 break;
             case BLE_CLOSE:
-                notifyLogList("蓝牙已关闭！");
+                notifyLogList("蓝牙已关闭");
                 bluetoothDeviceList.clear();
                 notifyBleList();
                 break;
             case ACCEPT_CONNECTING:
-                notifyLogList("正在等待客户端连接！");
+                notifyLogList("正在等待客户端连接");
                 break;
             case ACCEPT_CONNECT_SUCCESS:
-                notifyLogList("客户端已连接！");
+                notifyLogList("客户端已连接");
                 notifyBleList();
                 break;
             case ACCEPT_CONNECT_FAILED:
                 notifyLogList((String) obj);
                 break;
             case CONNECTING:
-                notifyLogList("正在连接服务器！");
+                notifyLogList("正在连接服务器");
                 break;
             case CONNECTED:
-                notifyLogList("已经连接过服务器，发送数据中！");
+                notifyLogList("已经连接过服务器，发送数据中");
                 break;
             case CONNECT_SUCCESS:
-                notifyLogList("已连接服务器！");
+                notifyLogList("已连接服务器");
                 notifyBleList();
                 break;
             case CONNECT_FAILED:
@@ -258,7 +258,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 notifyLogList((String) obj);
                 break;
             case SEARCH_START:
-                notifyLogList("开始搜索！");
+                notifyLogList("开始搜索");
                 break;
             case SEARCH_FOUND_DEVICE:
                 SearchResult searchResult = (SearchResult) obj;
@@ -270,10 +270,10 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 }
                 break;
             case SEARCH_CANCEL:
-                notifyLogList("取消搜索！");
+                notifyLogList("取消搜索");
                 break;
             case SEARCH_STOP:
-                notifyLogList("搜索完成！");
+                notifyLogList("搜索完成");
                 break;
             default:
                 break;

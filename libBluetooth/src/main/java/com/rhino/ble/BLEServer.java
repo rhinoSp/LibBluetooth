@@ -71,7 +71,7 @@ public class BLEServer {
                 bluetoothServerSocketLast.close();
                 bluetoothSocketLast.close();
             } catch (IOException e) {
-                LogUtils.e("断开连接失败！", e);
+                LogUtils.e("断开连接失败", e);
             }
         }
         bluetoothServerSocketLast = bluetoothServerSocket;
@@ -88,14 +88,14 @@ public class BLEServer {
             mmOutStream = bluetoothSocket.getOutputStream();
             mmOutStream.write(msg.getBytes());
             LogUtils.i("发送数据成功：" + msg);
-            notifyEvent(BLEEvent.WRITE_SUCCESS, "发送数据成功！");
+            notifyEvent(BLEEvent.WRITE_SUCCESS, "发送数据成功");
         } catch (Exception e) {
-            LogUtils.e("发送数据失败！", e);
-            notifyEvent(BLEEvent.WRITE_FAILED, "发送数据失败！" + e.toString());
+            LogUtils.e("发送数据失败", e);
+            notifyEvent(BLEEvent.WRITE_FAILED, "发送数据失败" + e.toString());
             try {
                 mmOutStream.close();
             } catch (Exception e1) {
-                LogUtils.e("发送数据失败！", e);
+                LogUtils.e("发送数据失败", e);
             }
         }
     }
@@ -150,7 +150,7 @@ public class BLEServer {
                 bluetoothSocket.close();
             }
         } catch (IOException e) {
-            LogUtils.e("断开连接失败！", e);
+            LogUtils.e("断开连接失败", e);
         }
     }
 
@@ -190,11 +190,11 @@ public class BLEServer {
             try {
                 bluetoothServerSocket = bluetoothAdapter.listenUsingRfcommWithServiceRecord(BLEUtils.NAME,
                         UUID.fromString(BLEUtils.BLE_CLASSIC_UUID));
-                notifyEvent(BLEEvent.ACCEPT_CONNECTING, "等待客户端连接中！");
+                notifyEvent(BLEEvent.ACCEPT_CONNECTING, "等待客户端连接中");
                 // 等待客户端连接
                 BluetoothSocket socket = bluetoothServerSocket.accept();
                 bluetoothSocket = socket;
-                notifyEvent(BLEEvent.ACCEPT_CONNECT_SUCCESS, "客户端已连接！");
+                notifyEvent(BLEEvent.ACCEPT_CONNECT_SUCCESS, "客户端已连接");
                 stopReadThread();
                 startReadThread();
 
@@ -202,8 +202,8 @@ public class BLEServer {
                 startNextAcceptConnectThread();
             } catch (Exception e) {
 //                startNextAcceptConnectThread();
-                LogUtils.e("等待客户端连接失败！", e);
-                notifyEvent(BLEEvent.ACCEPT_CONNECT_FAILED, "等待客户端连接失败！" + e.toString());
+                LogUtils.e("等待客户端连接失败", e);
+                notifyEvent(BLEEvent.ACCEPT_CONNECT_FAILED, "等待客户端连接失败" + e.toString());
             }
         }
     }
@@ -237,8 +237,8 @@ public class BLEServer {
                     startNextAcceptConnectThread();
                 }
 
-                LogUtils.e("读取数据失败！", e);
-                notifyEvent(BLEEvent.READ_FAILED, "读取数据失败！" + e.toString());
+                LogUtils.e("读取数据失败", e);
+                notifyEvent(BLEEvent.READ_FAILED, "读取数据失败" + e.toString());
                 try {
                     inputStream.close();
                 } catch (Exception e1) {

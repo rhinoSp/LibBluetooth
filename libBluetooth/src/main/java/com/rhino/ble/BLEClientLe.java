@@ -9,7 +9,6 @@ import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.content.Context;
 import android.os.Build;
-import android.util.Log;
 
 import com.rhino.log.LogUtils;
 
@@ -74,7 +73,7 @@ public class BLEClientLe {
     }
 
     /**
-     * 连接蓝牙服务器
+     * 连接服务器
      */
     public void connect(BluetoothDevice bluetoothDevice) {
         startConnectThread(bluetoothDevice);
@@ -89,7 +88,8 @@ public class BLEClientLe {
             doWrite(msg);
         } else {
             // 未连接该设备，关闭已连接设备
-            notifyEvent(BLEEvent.WRITE_FAILED, "未连接蓝牙服务");
+            LogUtils.w("未连接服务");
+            notifyEvent(BLEEvent.WRITE_FAILED, "未连接服务");
         }
     }
 
@@ -97,6 +97,7 @@ public class BLEClientLe {
      * 发送数据
      */
     private void doWrite(String msg) {
+        LogUtils.d("发送数据:" + msg);
         bluetoothGattCharacteristic.setValue(msg.getBytes());
         bluetoothGatt.writeCharacteristic(bluetoothGattCharacteristic);
     }
@@ -105,6 +106,7 @@ public class BLEClientLe {
      * 开启连接线程
      */
     private void startConnectThread(BluetoothDevice bluetoothDevice) {
+        LogUtils.d("开始蓝牙连接线程");
         stopConnectThread();
         connectThread = new ConnectThread(bluetoothDevice);
         connectThread.start();
@@ -114,6 +116,7 @@ public class BLEClientLe {
      * 开启扫描蓝牙服务线程
      */
     private void startDiscoverServicesThread() {
+        LogUtils.d("开始扫描服务线程");
         stopDiscoverServicesThread();
         discoverServicesThread = new DiscoverServicesThread();
         discoverServicesThread.start();
@@ -123,6 +126,7 @@ public class BLEClientLe {
      * 停止连接线程
      */
     private void stopConnectThread() {
+        LogUtils.d("停止蓝牙连接线程");
         if (connectThread != null) {
             connectThread.interrupt();
             connectThread = null;
@@ -133,6 +137,7 @@ public class BLEClientLe {
      * 停止扫描蓝牙服务线程
      */
     private void stopDiscoverServicesThread() {
+        LogUtils.d("停止扫描服务线程");
         if (discoverServicesThread != null) {
             discoverServicesThread.interrupt();
             discoverServicesThread = null;
@@ -143,6 +148,12 @@ public class BLEClientLe {
      * 断开连接
      */
     public void disconnect() {
+        LogUtils.d("断开蓝牙连接");
+        if (bluetoothGatt != null) {
+            bluetoothGatt.disconnect();
+            bluetoothGatt.close();
+            bluetoothGatt = null;
+        }
         stopConnectThread();
         stopDiscoverServicesThread();
     }
@@ -176,7 +187,8 @@ public class BLEClientLe {
         @Override
         public void run() {
             try {
-                notifyEvent(BLEEvent.CONNECTING, "连接服务器中！");
+                LogUtils.d("连接服务中，" + bluetoothDevice.getName());
+                notifyEvent(BLEEvent.CONNECTING, "连接服务中");
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     bluetoothGatt = bluetoothDevice.connectGatt(context, false, bluetoothGattCallback, BluetoothDevice.TRANSPORT_LE);
                 } else {
@@ -184,8 +196,8 @@ public class BLEClientLe {
                 }
                 bluetoothDeviceConnected = bluetoothDevice;
             } catch (Exception e) {
-                notifyEvent(BLEEvent.CONNECT_FAILED, "连接服务器失败！" + e.toString());
-                LogUtils.e("连接服务器失败！", e);
+                notifyEvent(BLEEvent.CONNECT_FAILED, "连接服务器失败" + e.toString());
+                LogUtils.e("连接服务器失败", e);
             }
         }
     }
@@ -200,20 +212,24 @@ public class BLEClientLe {
         @Override
         public void run() {
             // 延迟扫描服务（设置延迟时间过短，很可能发现不了服务）
-            threadSleep(1000);
+            LogUtils.d("延迟扫描服务");
+            threadSleep(1500);
             if (detectionGattValid()) {
                 return;
             }
+            LogUtils.d("开始扫描服务");
             bluetoothGatt.discoverServices();
 
             // 扫描服务超时
+            LogUtils.d("开启扫描服务超时监听");
             threadSleep(5000);
             if (discovered) {
                 // 已扫描到服务
+                LogUtils.d("已扫描到服务");
                 return;
             }
-            LogUtils.d("获取服务UUID超时，断开重连");
-            notifyEvent(BLEEvent.CONNECT_FAILED, "获取服务UUID超时，断开重连");
+            LogUtils.d("扫描服务超时");
+            notifyEvent(BLEEvent.CONNECT_FAILED, "扫描服务超时");
         }
 
         public void setDiscovered(boolean discovered) {
@@ -236,7 +252,7 @@ public class BLEClientLe {
             }
             switch (newState) {
                 case BluetoothGatt.STATE_CONNECTED:
-                    LogUtils.d("连接成功，开始获取服务UUID");
+                    LogUtils.d("蓝牙连接成功，开始获取服务UUID");
                     if (detectionGattValid()) {
                         return;
                     }
@@ -259,7 +275,7 @@ public class BLEClientLe {
                 LogUtils.w("received: " + status);
                 return;
             }
-            notifyEvent(BLEEvent.WRITE_SUCCESS, "发送数据成功！");
+            notifyEvent(BLEEvent.WRITE_SUCCESS, "发送数据成功");
             LogUtils.i("发送成功：" + new String(characteristic.getValue()));
         }
 
@@ -319,7 +335,7 @@ public class BLEClientLe {
                             BluetoothGattService linkLossService = gatt.getService(bluetoothGattService.getUuid());
                             setNotification(bluetoothGatt, linkLossService.getCharacteristic(UUID.fromString(BLEUtils.BLE_LE_UUID_SERVICE_EIGENVALUE_READ)), true);
                         }
-                        notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务器成功！");
+                        notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务器成功");
                     } else {
                         LogUtils.d(i + "号服务的第" + j + "个特征" + bluetoothGattCharacteristic.getUuid().toString());
                     }
@@ -354,7 +370,7 @@ public class BLEClientLe {
             return;
         }
         boolean success = bluetoothGatt.setCharacteristicNotification(characteristic, enable);
-        Log.e("TAG", "setNotification: " + success);
+        LogUtils.d("setNotification: " + success);
         if (success) {
             for (final BluetoothGattDescriptor bluetoothGattDescriptor : characteristic.getDescriptors()) {
                 if ((characteristic.getProperties() & BluetoothGattCharacteristic.PROPERTY_NOTIFY) != 0) {

@@ -76,8 +76,10 @@ public class BLEUtils {
         @Override
         public void onBluetoothStateChanged(boolean openOrClosed) {
             if (openOrClosed) {
-                callBack.get().onBLEEvent(BLEEvent.BLE_OPEN, "蓝牙开启");
+                LogUtils.d("蓝牙已开启");
+                callBack.get().onBLEEvent(BLEEvent.BLE_OPEN, "蓝牙已开启");
             } else {
+                LogUtils.d("蓝牙已开启");
                 if (bluetoothClient != null) {
                     bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
                 }
@@ -85,7 +87,7 @@ public class BLEUtils {
                 bleServer.disconnect();
                 bleClientClassic.disconnect();
                 bleClientLe.disconnect();
-                callBack.get().onBLEEvent(BLEEvent.BLE_CLOSE, "蓝牙关闭");
+                callBack.get().onBLEEvent(BLEEvent.BLE_CLOSE, "蓝牙已关闭");
             }
         }
     };
@@ -243,9 +245,9 @@ public class BLEUtils {
             return;
         }
         SearchRequest request = new SearchRequest.Builder()
-                .searchBluetoothLeDevice(5000, 3)   // 先扫BLE设备3次，每次3s
+                .searchBluetoothLeDevice(5000, 3) // 先扫BLE设备3次，每次3s
                 .searchBluetoothClassicDevice(5000) // 再扫经典蓝牙5s
-                .searchBluetoothLeDevice(2000)      // 再扫BLE设备2s
+                .searchBluetoothLeDevice(2000) // 再扫BLE设备2s
                 .build();
         startSearch(request);
     }
@@ -301,7 +303,7 @@ public class BLEUtils {
     }
 
     /**
-     * 客户端-连接蓝牙
+     * 客户端-连接服务
      */
     public void clientConnect(BluetoothDevice bluetoothDevice) {
         if (isBLE(bluetoothDevice)) {
