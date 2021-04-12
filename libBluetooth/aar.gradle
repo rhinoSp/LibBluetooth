@@ -10,7 +10,8 @@ ext.aarOutPutDir = "${rootDir}/repositories"
 ext.aarPackageName = "com.rhino.ble"
 ext.aarArtifactId = "libBluetooth"
 ext.aarVersionName = "1.0"
-ext.aarVersionCode = 7
+ext.aarVersionCode = 4
+ext.aarVersionCodeNote = "SNAPSHOT1"
 
 afterEvaluate {
     project.tasks.findAll {
@@ -20,7 +21,7 @@ afterEvaluate {
                     // aar打包完成，复制到指定目录
                     variant.assemble.doLast {
                         variant.outputs.all { output ->
-                            def aarOutputFileName = "${aarPackageName}-${aarArtifactId}-v${aarVersionName}.${aarVersionCode}.aar"
+                            def aarOutputFileName = "${aarPackageName}-${aarArtifactId}-v${aarVersionName}.${aarVersionCode}-${aarVersionCodeNote}.aar"
                             new File(aarOutPutDir, aarOutputFileName).delete()
                             copy {
                                 from output.outputFile

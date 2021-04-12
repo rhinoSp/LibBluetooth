@@ -12,8 +12,11 @@ import android.os.Build;
 
 import com.rhino.log.LogUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * @author rhino
@@ -64,6 +67,21 @@ public class BLEClientLe {
      * 读写UUID
      */
     private String readWriteUUID;
+    /**
+     * 线程池
+     */
+    private ExecutorService mThreadService;
+    /**
+     * 发送的失败标志位
+     */
+    private boolean sendFailed = true;
+    /**
+     * 发送数据速度
+     * 0 高
+     * 1 中
+     * 2 低
+     */
+    public static int sendSpeed = 1;
 
 
     public BLEClientLe(Context context, BluetoothAdapter bluetoothAdapter, BLECallback callback) {
@@ -110,8 +128,66 @@ public class BLEClientLe {
      */
     private void doWrite(String msg) {
         LogUtils.d("发送数据:" + msg);
-        bluetoothGattCharacteristic.setValue(msg.getBytes());
-        bluetoothGatt.writeCharacteristic(bluetoothGattCharacteristic);
+        sendThread(msg.getBytes());
+    }
+
+    /**
+     * 线程分包发送数据
+     */
+    private void sendThread(final byte[] buff) {
+        if (mThreadService == null) {
+            mThreadService = Executors.newFixedThreadPool(1);
+        }
+        if (!detectionGattValid()) {
+            return;
+        }
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                List<byte[]> sendDataArray = getSendDataByte(buff);
+                int number = 0;
+                for (byte[] sendData : sendDataArray) {
+                    threadSleep(5 + 10 * sendSpeed);//每次发包前，延时一会，更容易成功
+                    bluetoothGattCharacteristic.setValue(sendData);
+                    sendFailed = !bluetoothGatt.writeCharacteristic(bluetoothGattCharacteristic);//蓝牙发送数据，一次顶多20字节
+                    if (sendFailed) {
+                        LogUtils.e("发送失败，重新尝试发送");
+                        threadSleep(1000 + 500 * sendSpeed);
+                        sendFailed = !bluetoothGatt.writeCharacteristic(bluetoothGattCharacteristic);
+                        if (sendFailed) {
+                            LogUtils.e("无法发送数据");
+                            return;
+                        }
+                    }
+                    while (!sendFailed) {
+                        threadSleep(10 + 10 * sendSpeed);
+                        number++;
+                        if (number == 40) {
+                            bluetoothGattCharacteristic.setValue(new byte[0]);//额外发送会导致发包重复，所以发一个空包去提醒
+                            sendFailed = !bluetoothGatt.writeCharacteristic(bluetoothGattCharacteristic);
+                            LogUtils.w("第一次额外发送," + sendFailed);
+                        }
+                        if (number == 80) {
+                            bluetoothGattCharacteristic.setValue(new byte[0]);//额外发送会导致发包重复，所以发一个空包去提醒
+                            sendFailed = !bluetoothGatt.writeCharacteristic(bluetoothGattCharacteristic);
+                            LogUtils.w("第二次额外发送," + sendFailed);
+                        }
+                        if (number == 180) {
+                            bluetoothGattCharacteristic.setValue(new byte[0]);//额外发送会导致发包重复，所以发一个空包去提醒
+                            sendFailed = !bluetoothGatt.writeCharacteristic(bluetoothGattCharacteristic);
+                            LogUtils.w("第三次额外发送," + sendFailed);
+                        }
+                        if (number == 300) {
+                            sendFailed = true;
+                            LogUtils.e("发送失败，关闭线程");
+                            return;
+                        }
+                    }
+                    number = 0;
+                }
+            }
+        };
+        mThreadService.execute(runnable);
     }
 
     /**
@@ -288,6 +364,7 @@ public class BLEClientLe {
                 return;
             }
             notifyEvent(BLEEvent.WRITE_SUCCESS, "发送数据成功");
+            sendFailed = true;//等到发送数据回调成功才可以继续发送
             LogUtils.i("发送成功：" + new String(characteristic.getValue()));
         }
 
@@ -298,7 +375,7 @@ public class BLEClientLe {
                 LogUtils.w("received: " + status);
                 return;
             }
-            //mBluetoothGatt.writeDescriptor(descriptor);
+            //bluetoothGatt.writeDescriptor(descriptor);
             //来到这里，才算真正的建立连接
             LogUtils.d("连接服务器成功，" + gatt.getDevice().getName() + ", " + gatt.getDevice().getAddress());
             notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务器成功");
@@ -407,4 +484,34 @@ public class BLEClientLe {
             LogUtils.e(e);
         }
     }
+
+    /**
+     * 将数据分包
+     */
+    private int[] dataSeparate(int len) {
+        int[] lens = new int[2];
+        lens[0] = len / 20;
+        lens[1] = len % 20;
+        return lens;
+    }
+
+    /**
+     * 将String字符串分包为List byte数组
+     */
+    private List<byte[]> getSendDataByte(byte[] buff) {
+        List<byte[]> listSendData = new ArrayList<>();
+        int[] sendDataLength = dataSeparate(buff.length);
+        for (int i = 0; i < sendDataLength[0]; i++) {
+            byte[] dataFor20 = new byte[20];
+            System.arraycopy(buff, i * 20, dataFor20, 0, 20);
+            listSendData.add(dataFor20);
+        }
+        if (sendDataLength[1] > 0) {
+            byte[] lastData = new byte[sendDataLength[1]];
+            System.arraycopy(buff, sendDataLength[0] * 20, lastData, 0, sendDataLength[1]);
+            listSendData.add(lastData);
+        }
+        return listSendData;
+    }
+
 }
