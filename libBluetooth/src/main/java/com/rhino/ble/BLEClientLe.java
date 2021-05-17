@@ -348,7 +348,7 @@ public class BLEClientLe {
                     break;
                 case BluetoothGatt.STATE_DISCONNECTED:
                     LogUtils.d("蓝牙断开");
-                    notifyEvent(BLEEvent.DISCONNECTED, "蓝牙断开链接");
+                    notifyEvent(BLEEvent.DISCONNECTED, "蓝牙断开连接");
                     break;
                 default:
                     break;

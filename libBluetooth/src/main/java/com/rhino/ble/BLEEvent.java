@@ -44,7 +44,7 @@ public enum BLEEvent {
      */
     CONNECT_FAILED,
     /**
-     * 断开链接
+     * 断开连接
      */
     DISCONNECTED,
 

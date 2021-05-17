@@ -312,6 +312,9 @@ public class BLEUtils {
         if (bleClientClassic != null) {
             bleClientClassic.disconnect();
         }
+        if (callBack != null && callBack.get() != null) {
+            callBack.get().onBLEEvent(BLEEvent.DISCONNECTED, "蓝牙断开连接");
+        }
     }
 
     /**
