@@ -79,7 +79,7 @@ public class BLEUtils {
                 LogUtils.d("蓝牙已开启");
                 callBack.get().onBLEEvent(BLEEvent.BLE_OPEN, "蓝牙已开启");
             } else {
-                LogUtils.d("蓝牙已开启");
+                LogUtils.d("蓝牙已关闭");
                 if (bluetoothClient != null) {
                     bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
                 }
@@ -300,6 +300,18 @@ public class BLEUtils {
             return;
         }
         bleServer.startAcceptConnectThread();
+    }
+
+    /**
+     * 客户端-断开连接
+     */
+    public void clientDisconnect() {
+        if (bleClientLe != null) {
+            bleClientLe.disconnect();
+        }
+        if (bleClientClassic != null) {
+            bleClientClassic.disconnect();
+        }
     }
 
     /**
