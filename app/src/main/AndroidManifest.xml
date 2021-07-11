@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
+    <!-- 服务 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <application
         android:name="com.rhino.ble.demo.App"
@@ -17,7 +19,16 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
         tools:ignore="GoogleAppIndexingWarning">
-        <activity android:name="com.rhino.ble.demo.MainActivity" >
+
+        <!-- 蓝牙服务 -->
+        <service
+            android:name=".service.BluetoothService"
+            android:enabled="true"
+            android:exported="true" />
+        <service android:name=".service.AppService" />
+
+
+        <activity android:name="com.rhino.ble.demo.page.MainActivity" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -25,5 +36,6 @@
             </intent-filter>
         </activity>
     </application>
+
 
 </manifest>

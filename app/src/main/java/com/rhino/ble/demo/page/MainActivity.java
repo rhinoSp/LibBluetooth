@@ -1,4 +1,4 @@
-package com.rhino.ble.demo;
+package com.rhino.ble.demo.page;
 
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
@@ -16,12 +16,18 @@ import android.widget.Toast;
 
 import com.inuker.bluetooth.library.search.SearchResult;
 
+import com.rhino.ble.BLEUtils;
+import com.rhino.ble.demo.R;
+import com.rhino.ble.demo.event.BluetoothEvent;
+import com.rhino.ble.demo.service.BluetoothService;
 import com.rhino.ble.demo.utils.TimeUtils;
 import com.rhino.ble.demo.utils.PermissionsUtils;
-import com.rhino.ble.BLECallback;
-import com.rhino.ble.BLEUtils;
 import com.rhino.ble.BLEEvent;
 import com.rhino.log.LogUtils;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+import org.greenrobot.eventbus.ThreadMode;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +36,7 @@ import java.util.List;
  * @author LuoLin
  * @since Create on 2020/08/29.
  **/
-public class MainActivity extends AppCompatActivity implements BLECallback {
+public class MainActivity extends AppCompatActivity {
 
     public static final int REQUEST_CODE_PERMISSIONS = 1;
     public static final String[] PERMISSIONS = {
@@ -75,6 +81,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EventBus.getDefault().register(this);
         setContentView(R.layout.activity_main);
         if (PermissionsUtils.checkSelfPermission(this, PERMISSIONS)) {
             onGetAllRequest();
@@ -106,7 +113,8 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        BLEUtils.getInstance().onDestroy();
+        EventBus.getDefault().unregister(this);
+        BluetoothService.stopService(this);
     }
 
     @Override
@@ -122,14 +130,14 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
         }
     }
 
-    @Override
-    public void onBLEEvent(BLEEvent event, Object obj) {
-        LogUtils.d("event = " + event + ", obj = " + obj);
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onEvent(BluetoothEvent bluetoothEvent) {
+        LogUtils.d("event = " + bluetoothEvent.event + ", obj = " + bluetoothEvent.obj);
         if (!isFinishing()) {
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    dealBLEEvent(event, obj);
+                    dealBLEEvent(bluetoothEvent.event, bluetoothEvent.obj);
                 }
             });
         }
@@ -139,28 +147,26 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
      * 获得所有权限
      */
     private void onGetAllRequest() {
-        BLEUtils.getInstance().onCreate(this, this);
-        if (BLEUtils.getInstance().isBluetoothOpened()) {
+        BluetoothService.open();
+        if (BluetoothService.isBluetoothOpened()) {
             // 如果蓝牙是开着的，直接开始搜索
-            BLEUtils.getInstance().setDiscoverable(this, 60);
-            BLEUtils.getInstance().startSearch();
-            BLEUtils.getInstance().serverStartAcceptConnectThread();
+            BluetoothService.startService(this, true);
         }
-        setTitle("您的蓝牙名称：" + BLEUtils.getName());
+        setTitle("您的蓝牙名称：" + BluetoothService.getName());
     }
 
     /**
      * 开启蓝牙
      */
     public void onOpenBleClick(View view) {
-        BLEUtils.getInstance().open();
+        BluetoothService.open();
     }
 
     /**
      * 关闭蓝牙
      */
     public void onCloseBleClick(View view) {
-        BLEUtils.getInstance().close();
+        BluetoothService.close();
     }
 
     /**
@@ -173,9 +179,9 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
         }
         if (connectBluetoothDevice != null) {
             // 不等于null，说明当前是客户端
-            BLEUtils.getInstance().clientWrite(connectBluetoothDevice, msg);
+            BluetoothService.clientWrite(connectBluetoothDevice, msg);
         } else {
-            BLEUtils.getInstance().serverWrite(msg);
+            BluetoothService.serverWrite(msg);
         }
         notifyMsgList("[我]" + msg);
     }
@@ -189,13 +195,13 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
             adapterMsgList.notifyDataSetChanged();
         }
 
-//        String msg = createHelloMsg(device);
-//        BLEUtils.getInstance().clientWrite(device, msg);
+        String msg = createHelloMsg(device);
+        BluetoothService.clientWrite(device, msg);
 //
-//        notifyMsgList("[我]" + msg);
-//
-//        connectBluetoothDevice = device;
-//        textViewMsg.setText("消息列表【" + device.getName() + "】");
+        notifyMsgList("[我]" + msg);
+
+        connectBluetoothDevice = device;
+        textViewMsg.setText("消息列表【" + device.getName() + "】");
     }
 
     /**
@@ -206,9 +212,6 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
             case BLE_OPEN:
                 notifyLogList("蓝牙已开启");
                 notifyBleList();
-                BLEUtils.getInstance().setDiscoverable(this, 60);
-                BLEUtils.getInstance().startSearch();
-                BLEUtils.getInstance().serverStartAcceptConnectThread();
                 break;
             case BLE_CLOSE:
                 notifyLogList("蓝牙已关闭");
@@ -243,7 +246,7 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
                 notifyMsgList("[对方]" + obj);
                 if (((String) obj).startsWith("Hello")) {
                     String msg = createHiMsg();
-                    BLEUtils.getInstance().serverWrite(msg);
+                    BluetoothService.serverWrite(msg);
                     notifyLogList("发送消息" + msg);
                     notifyMsgList("[我]" + msg);
                 }
@@ -285,8 +288,8 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
      */
     private void notifyBleList() {
         bluetoothNameList.clear();
-        if (BLEUtils.getInstance().isBluetoothOpened()) {
-            List<BluetoothDevice> bondedBluetoothDeviceList = BLEUtils.getInstance().getBondedDevices();
+        if (BluetoothService.isBluetoothOpened()) {
+            List<BluetoothDevice> bondedBluetoothDeviceList = BluetoothService.getBondedDevices();
             for (BluetoothDevice device : bondedBluetoothDeviceList) {
                 if (!bluetoothDeviceList.contains(device)) {
                     bluetoothDeviceList.add(device);
@@ -327,14 +330,14 @@ public class MainActivity extends AppCompatActivity implements BLECallback {
      * 构建hello消息
      */
     private String createHelloMsg(BluetoothDevice device) {
-        return "Hello " + device.getName() + ", I am " + BLEUtils.getName();
+        return "Hello " + device.getName() + ", I am " + BluetoothService.getName();
     }
 
     /**
      * 构建hi消息
      */
     private String createHiMsg() {
-        return "Hi " + ", I am " + BLEUtils.getName();
+        return "Hi " + ", I am " + BluetoothService.getName();
     }
 
     /**
