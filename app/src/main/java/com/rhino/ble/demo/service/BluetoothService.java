@@ -76,7 +76,7 @@ public class BluetoothService extends Service implements BLECallback {
      * 获取正在连接蓝牙
      */
     public static BluetoothDevice getBluetoothDeviceConnecting() {
-        return BLEUtils.getInstance().getBluetoothDeviceConnected();
+        return BLEUtils.getInstance().getBluetoothDeviceConnecting();
     }
 
     /**

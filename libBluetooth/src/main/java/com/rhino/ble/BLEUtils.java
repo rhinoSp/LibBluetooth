@@ -381,7 +381,7 @@ public class BLEUtils {
      */
     public BluetoothDevice getBluetoothDeviceConnected() {
         if (bleClientLe != null && bleClientLe.getBluetoothDeviceConnected() != null) {
-            return bleClientLe.getBluetoothDeviceConnecting();
+            return bleClientLe.getBluetoothDeviceConnected();
         }
         if (bleClientClassic != null && bleClientClassic.getBluetoothDeviceConnected() != null) {
             return bleClientClassic.getBluetoothDeviceConnected();
