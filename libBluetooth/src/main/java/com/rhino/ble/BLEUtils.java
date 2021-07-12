@@ -58,7 +58,7 @@ public class BLEUtils {
     /**
      * 服务端
      */
-    private BLEServer bleServer;
+    private BLEServerClassic bleServerClassic;
     /**
      * 客户端
      */
@@ -84,9 +84,15 @@ public class BLEUtils {
                     bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
                 }
                 stopSearch();
-                bleServer.disconnect();
-                bleClientClassic.disconnect();
-                bleClientLe.disconnect();
+                if (bleServerClassic != null) {
+                    bleServerClassic.disconnect();
+                }
+                if (bleClientClassic != null) {
+                    bleClientClassic.disconnect();
+                }
+                if (bleClientLe != null) {
+                    bleClientLe.disconnect();
+                }
                 callBack.get().onBLEEvent(BLEEvent.BLE_CLOSE, "蓝牙已关闭");
             }
         }
@@ -137,7 +143,7 @@ public class BLEUtils {
             this.bluetoothClient = BLEManager.getClient(context);
         }
         this.bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        this.bleServer = new BLEServer(bluetoothAdapter, callBack);
+        this.bleServerClassic = new BLEServerClassic(bluetoothAdapter, callBack);
         this.bleClientClassic = new BLEClientClassic(bluetoothAdapter, callBack);
         this.bleClientLe = new BLEClientLe(context, bluetoothAdapter, callBack);
     }
@@ -153,8 +159,8 @@ public class BLEUtils {
             callBack.clear();
         }
         stopSearch();
-        if (bleServer != null) {
-            bleServer.onDestroy();
+        if (bleServerClassic != null) {
+            bleServerClassic.onDestroy();
         }
         if (bleClientClassic != null) {
             bleClientClassic.onDestroy();
@@ -225,8 +231,8 @@ public class BLEUtils {
             bluetoothClient.unregisterBluetoothStateListener(bluetoothStateListener);
         }
         stopSearch();
-        if (bleServer != null) {
-            bleServer.disconnect();
+        if (bleServerClassic != null) {
+            bleServerClassic.disconnect();
         }
         if (bleClientLe != null) {
             bleClientLe.disconnect();
@@ -286,20 +292,30 @@ public class BLEUtils {
      * 服务端-发送数据
      */
     public void serverWrite(String msg) {
-        if (bleServer == null) {
+        if (bleServerClassic == null) {
             return;
         }
-        bleServer.doWrite(msg);
+        bleServerClassic.doWrite(msg);
+    }
+
+    /**
+     * 服务端-开启等待连接线程
+     */
+    public void startNextAcceptConnectThread() {
+        if (bleServerClassic == null) {
+            return;
+        }
+        bleServerClassic.startNextAcceptConnectThread();
     }
 
     /**
      * 服务端-开启等待连接线程
      */
     public void serverStartAcceptConnectThread() {
-        if (bleServer == null) {
+        if (bleServerClassic == null) {
             return;
         }
-        bleServer.startAcceptConnectThread();
+        bleServerClassic.startAcceptConnectThread();
     }
 
     /**
@@ -345,6 +361,32 @@ public class BLEUtils {
                 bleClientClassic.write(bluetoothDevice, msg);
             }
         }
+    }
+
+    /**
+     * 获取正在连接蓝牙
+     */
+    public BluetoothDevice getBluetoothDeviceConnecting() {
+        if (bleClientLe != null && bleClientLe.getBluetoothDeviceConnecting() != null) {
+            return bleClientLe.getBluetoothDeviceConnecting();
+        }
+        if (bleClientClassic != null && bleClientClassic.getBluetoothDeviceConnecting() != null) {
+            return bleClientClassic.getBluetoothDeviceConnecting();
+        }
+        return null;
+    }
+
+    /**
+     * 获取连接成功的蓝牙
+     */
+    public BluetoothDevice getBluetoothDeviceConnected() {
+        if (bleClientLe != null && bleClientLe.getBluetoothDeviceConnected() != null) {
+            return bleClientLe.getBluetoothDeviceConnecting();
+        }
+        if (bleClientClassic != null && bleClientClassic.getBluetoothDeviceConnected() != null) {
+            return bleClientClassic.getBluetoothDeviceConnected();
+        }
+        return null;
     }
 
     /**

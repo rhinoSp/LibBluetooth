@@ -15,7 +15,7 @@ import java.util.UUID;
  * @author rhino
  * @since Create on 2020/08/29.
  **/
-public class BLEServer {
+public class BLEServerClassic {
 
     /**
      * 蓝牙适配器
@@ -57,7 +57,7 @@ public class BLEServer {
      */
     private boolean onDestroy = false;
 
-    public BLEServer(BluetoothAdapter bluetoothAdapter, BLECallback callback) {
+    public BLEServerClassic(BluetoothAdapter bluetoothAdapter, BLECallback callback) {
         this.bluetoothAdapter = bluetoothAdapter;
         this.callback = callback;
     }
@@ -65,7 +65,7 @@ public class BLEServer {
     /**
      * 开启下一次等待连接
      */
-    private void startNextAcceptConnectThread() {
+    public void startNextAcceptConnectThread() {
         if (bluetoothServerSocketLast != null && bluetoothSocketLast != null) {
             try {
                 bluetoothServerSocketLast.close();
@@ -74,8 +74,8 @@ public class BLEServer {
                 LogUtils.e("断开连接失败", e);
             }
         }
-        bluetoothServerSocketLast = bluetoothServerSocket;
-        bluetoothSocketLast = bluetoothSocket;
+        bluetoothServerSocketLast = null;
+        bluetoothSocketLast = null;
         startAcceptConnectThread();
     }
 
@@ -104,6 +104,7 @@ public class BLEServer {
      * 开启被连接服务
      */
     public void startAcceptConnectThread() {
+        LogUtils.d("开启服务端等待连接");
         stopAcceptConnectThread();
         acceptConnectThread = new AcceptConnectThread();
         acceptConnectThread.start();
@@ -114,6 +115,7 @@ public class BLEServer {
      */
     public void stopAcceptConnectThread() {
         if (acceptConnectThread != null) {
+            LogUtils.d("停止服务端等待连接");
             acceptConnectThread.interrupt();
             acceptConnectThread = null;
         }
@@ -123,6 +125,7 @@ public class BLEServer {
      * 开启读线程
      */
     public void startReadThread() {
+        LogUtils.d("开启服务端读线程");
         stopReadThread();
         readThread = new ReadThread();
         readThread.start();
@@ -133,6 +136,7 @@ public class BLEServer {
      */
     public void stopReadThread() {
         if (readThread != null) {
+            LogUtils.d("停止服务端读线程");
             readThread.interrupt();
             readThread = null;
         }
@@ -142,6 +146,7 @@ public class BLEServer {
      * 关闭套接字连接
      */
     private void closeSocket() {
+        LogUtils.d("关闭服务端连接");
         try {
             if (bluetoothServerSocket != null) {
                 bluetoothServerSocket.close();
@@ -158,6 +163,7 @@ public class BLEServer {
      * 断开连接
      */
     public void disconnect() {
+        LogUtils.d("断开服务端连接");
         closeSocket();
         stopAcceptConnectThread();
         stopReadThread();

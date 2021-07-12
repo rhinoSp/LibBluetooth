@@ -13,11 +13,11 @@ import com.inuker.bluetooth.library.search.SearchResult;
 import com.rhino.ble.BLECallback;
 import com.rhino.ble.BLEEvent;
 import com.rhino.ble.BLEUtils;
+import com.rhino.ble.demo.R;
+import com.rhino.ble.demo.event.BluetoothEvent;
 import com.rhino.ble.demo.page.MainActivity;
 import com.rhino.ble.demo.utils.NotificationUtils;
-import com.rhino.ble.demo.R;
 import com.rhino.ble.demo.utils.SharedPreferencesUtils;
-import com.rhino.ble.demo.event.BluetoothEvent;
 import com.rhino.log.LogUtils;
 
 import org.greenrobot.eventbus.EventBus;
@@ -36,14 +36,6 @@ public class BluetoothService extends Service implements BLECallback {
      * 搜索成功，默认连接蓝牙mac地址
      */
     private static String autoConnectBluetoothMac;
-    /**
-     * 连接的蓝牙
-     */
-    private static BluetoothDevice currentConnectingBluetoothDevice;
-    /**
-     * 连接成功的蓝牙
-     */
-    private static BluetoothDevice connectedBluetoothDevice;
     /**
      * 设备编号
      */
@@ -81,32 +73,17 @@ public class BluetoothService extends Service implements BLECallback {
     }
 
     /**
-     * 当前正在连接的蓝牙
+     * 获取正在连接蓝牙
      */
-    public static BluetoothDevice getCurrentConnectingBluetoothDevice() {
-        return currentConnectingBluetoothDevice;
-    }
-
-    /**
-     * 设置当前正在连接的蓝牙
-     */
-    public static void setCurrentConnectingBluetoothDevice(BluetoothDevice currentConnectingBluetoothDevice) {
-        BluetoothService.currentConnectingBluetoothDevice = currentConnectingBluetoothDevice;
+    public static BluetoothDevice getBluetoothDeviceConnecting() {
+        return BLEUtils.getInstance().getBluetoothDeviceConnected();
     }
 
     /**
      * 当前已连接的蓝牙
      */
-    public static BluetoothDevice getConnectedBluetoothDevice() {
-        return connectedBluetoothDevice;
-    }
-
-    /**
-     * 设置当前正在连接的蓝牙
-     */
-
-    public static void setConnectedBluetoothDevice(BluetoothDevice connectedBluetoothDevice) {
-        BluetoothService.connectedBluetoothDevice = connectedBluetoothDevice;
+    public static BluetoothDevice getBluetoothDeviceConnected() {
+        return BLEUtils.getInstance().getBluetoothDeviceConnected();
     }
 
     /**
@@ -138,26 +115,6 @@ public class BluetoothService extends Service implements BLECallback {
     }
 
     /**
-     * 在activity.onCreate()中调用
-     */
-    public static void init(Context context, BLECallback callBack) {
-        // 传统蓝牙之间通信的uuid
-        BLEUtils.BLE_CLASSIC_UUID = "00001101-0000-1000-8000-00805F9B34FB";
-        // 低功耗蓝牙的特征值uuid，发送
-        BLEUtils.BLE_lE_UUID_SERVICE_EIGENVALUE_SEND = "0000ffe1-0000-1000-8000-00805f9b34fb";
-        // 低功耗蓝牙的特征值uuid，接收
-        BLEUtils.BLE_LE_UUID_SERVICE_EIGENVALUE_READ = "00002902-0000-1000-8000-00805f9b34fb";
-        BLEUtils.getInstance().onCreate(context, callBack);
-    }
-
-    /**
-     * 在activity.onDestroy()中调用，回收资源
-     */
-    public static void releaseAll() {
-        BLEUtils.getInstance().onDestroy();
-    }
-
-    /**
      * 获取已经配对的设备
      */
     public static List<BluetoothDevice> getBondedDevices() {
@@ -181,14 +138,14 @@ public class BluetoothService extends Service implements BLECallback {
      * 是否连接中
      */
     public static boolean isConnecting(BluetoothDevice bluetoothDevice) {
-        return Objects.equals(currentConnectingBluetoothDevice, bluetoothDevice);
+        return Objects.equals(getBluetoothDeviceConnecting(), bluetoothDevice);
     }
 
     /**
      * 是否已连接
      */
     public static boolean isConnected(BluetoothDevice bluetoothDevice) {
-        return Objects.equals(connectedBluetoothDevice, bluetoothDevice);
+        return Objects.equals(getBluetoothDeviceConnected(), bluetoothDevice);
     }
 
     /**
@@ -244,6 +201,9 @@ public class BluetoothService extends Service implements BLECallback {
         if (isSearching()) {
             return;
         }
+        if (!isBluetoothOpened()) {
+            return;
+        }
         setSearching(true);
         BLEUtils.getInstance().startSearch();
     }
@@ -273,6 +233,13 @@ public class BluetoothService extends Service implements BLECallback {
     /**
      * 服务端-开启等待连接线程
      */
+    public static void startNextAcceptConnectThread() {
+        BLEUtils.getInstance().startNextAcceptConnectThread();
+    }
+
+    /**
+     * 服务端-开启等待连接线程
+     */
     public static void serverStartAcceptConnectThread() {
         BLEUtils.getInstance().serverStartAcceptConnectThread();
     }
@@ -288,8 +255,8 @@ public class BluetoothService extends Service implements BLECallback {
      * 客户端-连接
      */
     public static void clientConnect(BluetoothDevice bluetoothDevice) {
-        LogUtils.w("开始连接：" + bluetoothDevice.getAddress());
-        currentConnectingBluetoothDevice = bluetoothDevice;
+        LogUtils.d("开始连接：" + bluetoothDevice.getName() + ", " + bluetoothDevice.getAddress());
+        clearConnectedData();
         BLEUtils.getInstance().clientConnect(bluetoothDevice);
     }
 
@@ -304,7 +271,7 @@ public class BluetoothService extends Service implements BLECallback {
      * 客户端-发送数据
      */
     public static void clientWrite(String msg) {
-        BLEUtils.getInstance().clientWrite(getConnectedBluetoothDevice(), msg);
+        BLEUtils.getInstance().clientWrite(getBluetoothDeviceConnected(), msg);
     }
 
     /**
@@ -333,12 +300,6 @@ public class BluetoothService extends Service implements BLECallback {
      */
     public static void clearConnectedData() {
         LogUtils.d("清除连接信息");
-        if (connectedBluetoothDevice != null) {
-            LogUtils.d("断开连接");
-            disconnect();
-        }
-        currentConnectingBluetoothDevice = null;
-        connectedBluetoothDevice = null;
         deviceNo = null;
         isSearching = false;
     }
@@ -355,11 +316,32 @@ public class BluetoothService extends Service implements BLECallback {
      * 获取连接成功的蓝牙
      */
     public static String getAutoConnectBluetoothMac() {
-        if (!TextUtils.isEmpty(autoConnectBluetoothMac)) {
+        if (TextUtils.isEmpty(autoConnectBluetoothMac)) {
             autoConnectBluetoothMac = SharedPreferencesUtils.getInstance().getString("mac");
         }
         return autoConnectBluetoothMac;
     }
+
+    /**
+     * 在activity.onCreate()中调用
+     */
+    private void init(Context context, BLECallback callBack) {
+        // 传统蓝牙之间通信的uuid
+        BLEUtils.BLE_CLASSIC_UUID = "00001101-0000-1000-8000-00805F9B34FB";
+        // 低功耗蓝牙的特征值uuid，发送
+        BLEUtils.BLE_lE_UUID_SERVICE_EIGENVALUE_SEND = "0000ffe1-0000-1000-8000-00805f9b34fb";
+        // 低功耗蓝牙的特征值uuid，接收
+        BLEUtils.BLE_LE_UUID_SERVICE_EIGENVALUE_READ = "00002902-0000-1000-8000-00805f9b34fb";
+        BLEUtils.getInstance().onCreate(context, callBack);
+    }
+
+    /**
+     * 在activity.onDestroy()中调用，回收资源
+     */
+    public void releaseAll() {
+        BLEUtils.getInstance().onDestroy();
+    }
+
 
     /**
      * 当服务被创建时调用.
@@ -402,11 +384,11 @@ public class BluetoothService extends Service implements BLECallback {
         boolean startSearch = intent != null && intent.getBooleanExtra("startSearch", false);
         if (isBluetoothOpened()) {
             //蓝牙已开启，自动开启搜索
-            init(this, this);
             if (startSearch) {
                 setDiscoverable(this, 60);
                 startSearch();
             }
+            startNextAcceptConnectThread();
         } else {
             if (startSearch) {
                 open();
@@ -428,7 +410,7 @@ public class BluetoothService extends Service implements BLECallback {
                 //蓝牙已开启，自动开启搜索
                 setDiscoverable(this, 60);
                 startSearch();
-                clearConnectedData();
+                startNextAcceptConnectThread();
                 break;
             case BLE_CLOSE:
                 //蓝牙已关闭
@@ -451,9 +433,8 @@ public class BluetoothService extends Service implements BLECallback {
                 //已经连接过服务器，发送数据中
             case CONNECT_SUCCESS:
                 //已连接服务器
-                connectedBluetoothDevice = currentConnectingBluetoothDevice;
-                if (connectedBluetoothDevice != null) {
-                    saveAutoConnectBluetoothMac(connectedBluetoothDevice.getAddress());
+                if (getBluetoothDeviceConnected() != null) {
+                    saveAutoConnectBluetoothMac(getBluetoothDeviceConnected().getAddress());
                 }
                 break;
             case CONNECT_FAILED:
@@ -489,13 +470,8 @@ public class BluetoothService extends Service implements BLECallback {
                     //搜索到设备
                     LogUtils.d("搜索到蓝牙：" + searchResult.device.getName() + ", mac：" + searchResult.device.getAddress());
                     bluetoothDeviceList.add(searchResult.device);
-                    if (TextUtils.equals(getAutoConnectBluetoothMac(), searchResult.getAddress())) {
-                        LogUtils.d("开始自动连接：" + searchResult.device.getName() + "， mac：" + searchResult.device.getAddress());
-                        //createBond(searchResult.searchResult);
-                        clientConnect(searchResult.device);
-                        //clientWrite(searchResult.searchResult, "020202");
-                    }
                 }
+                checkAutoConnect();
                 break;
             case SEARCH_CANCEL:
                 //取消搜索
@@ -509,6 +485,25 @@ public class BluetoothService extends Service implements BLECallback {
                 break;
         }
         EventBus.getDefault().post(BluetoothEvent.create(event, obj));
+    }
+
+    /**
+     * 检查自动连接
+     */
+    public static boolean checkAutoConnect() {
+        if (!isBluetoothOpened()) {
+            return false;
+        }
+        for (BluetoothDevice bluetoothDevice : bluetoothDeviceList) {
+            if (TextUtils.equals(getAutoConnectBluetoothMac(), bluetoothDevice.getAddress())) {
+                LogUtils.d("开始自动连接：" + bluetoothDevice.getName() + "， mac：" + bluetoothDevice.getAddress());
+                //createBond(searchResult.searchResult);
+                clientConnect(bluetoothDevice);
+                //clientWrite(searchResult.searchResult, "020202");
+                return true;
+            }
+        }
+        return false;
     }
 
 }

@@ -28,6 +28,10 @@ public class BLEClientClassic {
     private BLECallback callback;
 
     /**
+     * 正在连接的蓝牙设备
+     */
+    private BluetoothDevice bluetoothDeviceConnecting;
+    /**
      * 连接成功的蓝牙设备
      */
     private BluetoothDevice bluetoothDeviceConnected;
@@ -122,8 +126,13 @@ public class BLEClientClassic {
      * 开启连接线程
      */
     private void startConnectThread(BluetoothDevice bluetoothDevice, String msg) {
+        if (bluetoothDeviceConnecting != null) {
+            LogUtils.w("正在连接中");
+            return;
+        }
         LogUtils.d("开始蓝牙连接线程");
         stopConnectThread();
+        bluetoothDeviceConnecting = bluetoothDevice;
         connectThread = new ConnectThread(bluetoothDevice, msg);
         connectThread.start();
     }
@@ -132,8 +141,8 @@ public class BLEClientClassic {
      * 停止连接线程
      */
     private void stopConnectThread() {
-        LogUtils.d("停止蓝牙连接线程");
         if (connectThread != null) {
+            LogUtils.d("停止蓝牙连接线程");
             connectThread.interrupt();
             connectThread = null;
         }
@@ -163,9 +172,10 @@ public class BLEClientClassic {
     /**
      * 断开连接
      */
-    public void disconnect() {
+    public boolean disconnect() {
         LogUtils.d("断开蓝牙连接");
         try {
+            bluetoothDeviceConnecting = null;
             bluetoothDeviceConnected = null;
             if (bluetoothSocket != null) {
                 bluetoothSocket.close();
@@ -175,6 +185,7 @@ public class BLEClientClassic {
         }
         stopConnectThread();
         stopReadThread();
+        return true;
     }
 
     /**
@@ -183,6 +194,20 @@ public class BLEClientClassic {
     public void onDestroy() {
         onDestroy = true;
         disconnect();
+    }
+
+    /**
+     * 获取正在连接蓝牙
+     */
+    public BluetoothDevice getBluetoothDeviceConnecting() {
+        return bluetoothDeviceConnecting;
+    }
+
+    /**
+     * 获取已连接蓝牙
+     */
+    public BluetoothDevice getBluetoothDeviceConnected() {
+        return bluetoothDeviceConnected;
     }
 
     /**
@@ -212,10 +237,11 @@ public class BLEClientClassic {
                 bluetoothSocket = bluetoothDevice.createRfcommSocketToServiceRecord(UUID.fromString(BLEUtils.BLE_CLASSIC_UUID));
                 notifyEvent(BLEEvent.CONNECTING, "连接服务中");
                 bluetoothSocket.connect();
+                // 保存连接成功的设备
+                bluetoothDeviceConnected = bluetoothDeviceConnecting;
+                bluetoothDeviceConnecting = null;
                 notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务成功");
 
-                // 保存连接成功的设备
-                bluetoothDeviceConnected = bluetoothDevice;
                 // 开启读线程
                 startReadThread();
                 // 发送数据
@@ -223,8 +249,9 @@ public class BLEClientClassic {
                     doWrite(msg);
                 }
             } catch (Exception e) {
-                notifyEvent(BLEEvent.READ_FAILED, "连接服务器失败" + e.toString());
                 LogUtils.e("连接服务器失败", e);
+                disconnect();
+                notifyEvent(BLEEvent.READ_FAILED, "连接服务器失败" + e.toString());
             }
         }
     }
@@ -257,6 +284,7 @@ public class BLEClientClassic {
 //                    write(bluetoothDevice, "1");
 //                }
                 notifyEvent(BLEEvent.READ_FAILED, "读取数据失败" + e.toString());
+                disconnect();
                 LogUtils.e("读取数据失败", e);
                 try {
                     if (inputStream != null) {

@@ -2,6 +2,7 @@ package com.rhino.ble.demo.page;
 
 import android.Manifest;
 import android.bluetooth.BluetoothDevice;
+import android.os.Build;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
@@ -15,15 +16,13 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.inuker.bluetooth.library.search.SearchResult;
-
+import com.rhino.ble.BLEEvent;
 import com.rhino.ble.BLEUtils;
 import com.rhino.ble.demo.R;
 import com.rhino.ble.demo.event.BluetoothEvent;
 import com.rhino.ble.demo.service.BluetoothService;
-import com.rhino.ble.demo.utils.TimeUtils;
 import com.rhino.ble.demo.utils.PermissionsUtils;
-import com.rhino.ble.BLEEvent;
-import com.rhino.log.LogUtils;
+import com.rhino.ble.demo.utils.TimeUtils;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -73,21 +72,13 @@ public class MainActivity extends AppCompatActivity {
      * 消息编辑框
      */
     private EditText editTextMsg;
-    /**
-     * 连接的设备
-     */
-    private BluetoothDevice connectBluetoothDevice;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         EventBus.getDefault().register(this);
         setContentView(R.layout.activity_main);
-        if (PermissionsUtils.checkSelfPermission(this, PERMISSIONS)) {
-            onGetAllRequest();
-        } else {
-            PermissionsUtils.requestPermissions(this, PERMISSIONS);
-        }
+
         adapterBluetoothList = new ArrayAdapter<>(this, R.layout.simple_list_item_1, bluetoothNameList);
         ListView listView1 = findViewById(R.id.list_view1);
         listView1.setAdapter(adapterBluetoothList);
@@ -106,8 +97,13 @@ public class MainActivity extends AppCompatActivity {
         listViewMsg.setAdapter(adapterMsgList);
 
         textViewMsg = findViewById(R.id.tv_tips3);
-
         editTextMsg = findViewById(R.id.et_msg);
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M || PermissionsUtils.checkSelfPermission(this, PERMISSIONS)) {
+            onGetAllRequest();
+        } else {
+            PermissionsUtils.requestPermissions(this, PERMISSIONS);
+        }
     }
 
     @Override
@@ -132,14 +128,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onEvent(BluetoothEvent bluetoothEvent) {
-        LogUtils.d("event = " + bluetoothEvent.event + ", obj = " + bluetoothEvent.obj);
         if (!isFinishing()) {
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    dealBLEEvent(bluetoothEvent.event, bluetoothEvent.obj);
-                }
-            });
+            dealBLEEvent(bluetoothEvent.event, bluetoothEvent.obj);
         }
     }
 
@@ -147,19 +137,18 @@ public class MainActivity extends AppCompatActivity {
      * 获得所有权限
      */
     private void onGetAllRequest() {
-        BluetoothService.open();
-        if (BluetoothService.isBluetoothOpened()) {
-            // 如果蓝牙是开着的，直接开始搜索
-            BluetoothService.startService(this, true);
-        }
-        setTitle("您的蓝牙名称：" + BluetoothService.getName());
+        refreshConnected();
     }
 
     /**
      * 开启蓝牙
      */
     public void onOpenBleClick(View view) {
-        BluetoothService.open();
+        if (BluetoothService.isBluetoothOpened()) {
+            BluetoothService.startSearch();
+        } else {
+            BluetoothService.open();
+        }
     }
 
     /**
@@ -177,9 +166,9 @@ public class MainActivity extends AppCompatActivity {
         if (TextUtils.isEmpty(msg)) {
             return;
         }
-        if (connectBluetoothDevice != null) {
+        if (BluetoothService.getBluetoothDeviceConnected() != null) {
             // 不等于null，说明当前是客户端
-            BluetoothService.clientWrite(connectBluetoothDevice, msg);
+            BluetoothService.clientWrite(BluetoothService.getBluetoothDeviceConnected(), msg);
         } else {
             BluetoothService.serverWrite(msg);
         }
@@ -190,18 +179,30 @@ public class MainActivity extends AppCompatActivity {
      * 选中某个蓝牙
      */
     public void onBleClick(BluetoothDevice device) {
-        if (connectBluetoothDevice != device) {
+        if (BluetoothService.getBluetoothDeviceConnected() != device) {
             msgList.clear();
             adapterMsgList.notifyDataSetChanged();
         }
+        BluetoothService.clientConnect(device);
+    }
 
-        String msg = createHelloMsg(device);
-        BluetoothService.clientWrite(device, msg);
-//
-        notifyMsgList("[我]" + msg);
-
-        connectBluetoothDevice = device;
-        textViewMsg.setText("消息列表【" + device.getName() + "】");
+    /**
+     * 刷新蓝牙状态
+     */
+    private void refreshConnected() {
+        String title = BluetoothService.getName();
+        BluetoothDevice bluetoothDeviceConnected = BluetoothService.getBluetoothDeviceConnected();
+        if (bluetoothDeviceConnected != null) {
+            String msg = createHelloMsg(bluetoothDeviceConnected);
+            editTextMsg.setText(msg);
+            textViewMsg.setText("消息列表【" + bluetoothDeviceConnected.getName() + "】");
+            title += "-已连接";
+        } else {
+            editTextMsg.setText("");
+            textViewMsg.setText("消息列表");
+            title += BluetoothService.isBluetoothOpened() ? "-已开启" : "-已关闭";
+        }
+        setTitle(title);
     }
 
     /**
@@ -212,11 +213,13 @@ public class MainActivity extends AppCompatActivity {
             case BLE_OPEN:
                 notifyLogList("蓝牙已开启");
                 notifyBleList();
+                refreshConnected();
                 break;
             case BLE_CLOSE:
                 notifyLogList("蓝牙已关闭");
                 bluetoothDeviceList.clear();
                 notifyBleList();
+                refreshConnected();
                 break;
             case ACCEPT_CONNECTING:
                 notifyLogList("正在等待客户端连接");
@@ -235,6 +238,7 @@ public class MainActivity extends AppCompatActivity {
                 notifyLogList("已经连接过服务器");
                 break;
             case CONNECT_SUCCESS:
+                refreshConnected();
                 notifyLogList("已连接服务器");
                 notifyBleList();
                 break;
@@ -265,9 +269,9 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case SEARCH_FOUND_DEVICE:
                 SearchResult searchResult = (SearchResult) obj;
+                notifyLogList("搜索到设备：" + (TextUtils.isEmpty(searchResult.device.getName()) ? "" : searchResult.device.getName()));
                 if (!bluetoothDeviceList.contains(searchResult.device)) {
                     // 去重
-                    notifyLogList("搜索到设备：" + (TextUtils.isEmpty(searchResult.device.getName()) ? "" : searchResult.device.getName()));
                     bluetoothDeviceList.add(searchResult.device);
                     notifyBleList();
                 }

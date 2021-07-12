@@ -37,6 +37,10 @@ public class BLEClientLe {
     private BLECallback callback;
 
     /**
+     * 正在连接的蓝牙设备
+     */
+    private BluetoothDevice bluetoothDeviceConnecting;
+    /**
      * 连接成功的蓝牙设备
      */
     private BluetoothDevice bluetoothDeviceConnected;
@@ -194,8 +198,13 @@ public class BLEClientLe {
      * 开启连接线程
      */
     private void startConnectThread(BluetoothDevice bluetoothDevice) {
+        if (bluetoothDeviceConnecting != null) {
+            LogUtils.w("正在连接中");
+            return;
+        }
         LogUtils.d("开始蓝牙连接线程");
         stopConnectThread();
+        bluetoothDeviceConnecting = bluetoothDevice;
         connectThread = new ConnectThread(bluetoothDevice);
         connectThread.start();
     }
@@ -235,8 +244,9 @@ public class BLEClientLe {
     /**
      * 断开连接
      */
-    public void disconnect() {
+    public boolean disconnect() {
         LogUtils.d("断开蓝牙连接");
+        bluetoothDeviceConnecting = null;
         bluetoothDeviceConnected = null;
         if (bluetoothGatt != null) {
             bluetoothGatt.disconnect();
@@ -245,6 +255,7 @@ public class BLEClientLe {
         }
         stopConnectThread();
         stopDiscoverServicesThread();
+        return true;
     }
 
     /**
@@ -253,6 +264,20 @@ public class BLEClientLe {
     public void onDestroy() {
         onDestroy = true;
         disconnect();
+    }
+
+    /**
+     * 获取正在连接蓝牙
+     */
+    public BluetoothDevice getBluetoothDeviceConnecting() {
+        return bluetoothDeviceConnecting;
+    }
+
+    /**
+     * 获取连接成功的蓝牙
+     */
+    public BluetoothDevice getBluetoothDeviceConnected() {
+        return bluetoothDeviceConnected;
     }
 
     /**
@@ -283,8 +308,8 @@ public class BLEClientLe {
                 } else {
                     bluetoothGatt = bluetoothDevice.connectGatt(context, false, bluetoothGattCallback);
                 }
-                bluetoothDeviceConnected = bluetoothDevice;
             } catch (Exception e) {
+                disconnect();
                 notifyEvent(BLEEvent.CONNECT_FAILED, "连接服务器失败" + e.toString());
                 LogUtils.e("连接服务器失败", e);
             }
@@ -380,6 +405,8 @@ public class BLEClientLe {
             //bluetoothGatt.writeDescriptor(descriptor);
             //来到这里，才算真正的建立连接
             LogUtils.d("连接服务器成功，" + gatt.getDevice().getName() + ", " + gatt.getDevice().getAddress());
+            bluetoothDeviceConnected = bluetoothDeviceConnecting;
+            bluetoothDeviceConnecting = null;
             notifyEvent(BLEEvent.CONNECT_SUCCESS, "连接服务器成功");
         }
 

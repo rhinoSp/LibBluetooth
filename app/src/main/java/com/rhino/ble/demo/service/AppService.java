@@ -12,6 +12,7 @@ import com.rhino.ble.demo.page.MainActivity;
 import com.rhino.ble.demo.utils.NotificationUtils;
 import com.rhino.ble.demo.R;
 import com.rhino.ble.demo.event.TimerEvent;
+import com.rhino.ble.demo.utils.TimeUtils;
 import com.rhino.log.LogUtils;
 
 /**
@@ -79,11 +80,18 @@ public class AppService extends ABaseService {
      */
     private void checkBluetoothConnect() {
         if (!TextUtils.isEmpty(BluetoothService.getAutoConnectBluetoothMac())
-                && BluetoothService.getConnectedBluetoothDevice() == null
-                && !BluetoothService.isSearching()) {
+                && BluetoothService.getBluetoothDeviceConnected() == null
+                && !BluetoothService.isSearching()
+                && System.currentTimeMillis() / 1000 % 5 == 0) {
             // 连接过，且未连接开启搜索自动连接
             LogUtils.w("连接过，且未连接开启搜索自动连接");
-            BluetoothService.startSearch();
+            if (!BluetoothService.checkAutoConnect()) {
+                if (BluetoothService.isBluetoothOpened()) {
+                    BluetoothService.startSearch();
+                } else {
+                    BluetoothService.open();
+                }
+            }
         }
     }
 
